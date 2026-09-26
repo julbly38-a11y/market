@@ -6,11 +6,48 @@
 //   node monitor.js --file urls.txt        (one URL per line)
 //   node monitor.js --watchlist            (uses watchlist.json, labeled benchmark set)
 
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 
 const HISTORY_FILE = path.join(__dirname, 'price-history.json');
 const WATCHLIST_FILE = path.join(__dirname, 'watchlist.json');
+
+const supabase =
+  process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
+    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+        db: { schema: 'market' },
+        auth: { persistSession: false },
+      })
+    : null;
+
+async function syncToSupabase(data) {
+  if (!supabase) return;
+
+  const { data: product, error: upsertErr } = await supabase
+    .from('products')
+    .upsert(
+      { url: data.url, label: data.label, name: data.name, sku: data.sku },
+      { onConflict: 'url' }
+    )
+    .select('id')
+    .single();
+  if (upsertErr) throw upsertErr;
+
+  const { error: snapshotErr } = await supabase.from('price_snapshots').insert({
+    product_id: product.id,
+    price: data.price,
+    old_price: data.oldPrice,
+    currency: data.currency,
+    availability: data.availability,
+    seller: data.seller,
+    rating: data.rating,
+    review_count: data.reviewCount,
+    checked_at: data.checkedAt,
+  });
+  if (snapshotErr) throw snapshotErr;
+}
 
 function extractJsonLd(html) {
   const blocks = [];
@@ -131,6 +168,10 @@ async function main() {
     process.exit(1);
   }
 
+  if (!supabase) {
+    console.log('ℹ Supabase не налаштовано (SUPABASE_URL / SUPABASE_SERVICE_KEY відсутні в .env) — пишу лише в price-history.json\n');
+  }
+
   const history = loadHistory();
   const results = [];
 
@@ -154,6 +195,12 @@ async function main() {
       const ratingStr = data.reviewCount ? ` | ★${data.rating} (${data.reviewCount} відгуків)` : '';
       console.log(`✔ ${tag}${data.name}`);
       console.log(`  ${data.price} ${data.currency} | ${data.availability} | ${data.seller}${ratingStr}${change}`);
+
+      try {
+        await syncToSupabase(data);
+      } catch (dbErr) {
+        console.error(`  ⚠ Supabase: ${dbErr.message}`);
+      }
     } catch (err) {
       console.error(`✘ ${label ? `[${label}] ` : ''}${url}\n  ${err.message}`);
     }

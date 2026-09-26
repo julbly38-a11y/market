@@ -28,3 +28,13 @@ node monitor.js --file urls.txt
 
 - Не використовувати для товарів, які видають себе за чужий бренд за ціною, що на порядок нижча за оригінал (типова ознака контрафакту) — на Prom.ua це трапляється часто, особливо під запитами "Apple", "AirPods", "Samsung" тощо
 - Затримка 800мс між запитами — не наростити навантаження на чужий сервер
+
+## Supabase (опційно)
+
+Якщо в `.env` (скопіювати з `.env.example`) є `SUPABASE_URL` і `SUPABASE_SERVICE_KEY`, кожен замір додатково пишеться в схему `market` (таблиці `products`, `price_snapshots`). Без `.env` скрипт працює як раніше — тільки `price-history.json`.
+
+Перед першим запуском із Supabase:
+
+1. Supabase Dashboard → проєкт **LSMD** → Settings → API → Data API Settings → Exposed schemas → додати `market` → Save (без цього кроку PostgREST відповідає `PGRST106 Invalid schema: market`)
+2. Скопіювати **service_role** ключ (не anon/publishable!) із Settings → API в `.env` як `SUPABASE_SERVICE_KEY`
+3. `.env` вже в `.gitignore` — ніколи не комітити
