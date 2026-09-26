@@ -1,0 +1,13 @@
+{
+  "name": "price-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Моніторинг цін конкурентів для дропшипінгу (Prom.ua, Rozetka.com.ua) через JSON-LD на сторінках товарів.",
+  "main": "monitor.js",
+  "scripts": {
+    "monitor": "node monitor.js --watchlist"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
