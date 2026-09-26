@@ -5,7 +5,8 @@
   "description": "Моніторинг цін конкурентів для дропшипінгу (Prom.ua, Rozetka.com.ua) через JSON-LD на сторінках товарів.",
   "main": "monitor.js",
   "scripts": {
-    "monitor": "node monitor.js --watchlist"
+    "monitor": "node monitor.js --watchlist",
+    "test:mydrop": "node test-mydrop.js"
   },
   "engines": {
     "node": ">=18"

@@ -38,3 +38,11 @@ node monitor.js --file urls.txt
 1. Supabase Dashboard → проєкт **LSMD** → Settings → API → Data API Settings → Exposed schemas → додати `market` → Save (без цього кроку PostgREST відповідає `PGRST106 Invalid schema: market`)
 2. Скопіювати **service_role** ключ (не anon/publishable!) із Settings → API в `.env` як `SUPABASE_SERVICE_KEY`
 3. `.env` вже в `.gitignore` — ніколи не комітити
+
+## MyDrop — дропшипінг без складу (у розробці)
+
+[MyDrop](https://mydrop.com.ua/) — українська дропшип-CRM з реальним API для ролі "дропшипер": каталог постачальників з гуртовими (не роздрібними) цінами + створення й подача замовлення постачальнику програмно, без ручного чекауту чи бота.
+
+Клієнт — [mydrop.js](mydrop.js), тестовий прогін — [test-mydrop.js](test-mydrop.js) (`npm run test:mydrop`). Без `MYDROP_API_KEY` в `.env` скрипт просто друкує структуру запитів на мок-даних (dry-run); з ключем — реально тягне підключених постачальників і їхній каталог.
+
+**Ще не зроблено:** реєстрація акаунта дропшипера на mydrop.com.ua, підключення хоча б одного постачальника в кабінеті, отримання `MYDROP_API_KEY` (Інтеграції в кабінеті) → додати в `.env`. Власна вітрина (сайт) і зв'язок "замовлення на сайті → створення+подача замовлення в MyDrop" — наступний крок після цього.
