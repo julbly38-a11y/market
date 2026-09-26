@@ -31,6 +31,7 @@ export default async function handler(req, res) {
   };
 
   let supabaseId = null;
+  let supabaseDebug = null;
   try {
     const sbRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/orders`, {
       method: 'POST',
@@ -46,8 +47,18 @@ export default async function handler(req, res) {
     });
     const sbJson = await sbRes.json();
     supabaseId = Array.isArray(sbJson) ? sbJson[0]?.id ?? null : null;
+    if (!sbRes.ok) {
+      supabaseDebug = { status: sbRes.status, body: sbJson };
+    }
   } catch (err) {
-    console.error('Supabase insert failed', err);
+    supabaseDebug = { thrown: String(err) };
+  }
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+    supabaseDebug = {
+      ...supabaseDebug,
+      hasUrl: Boolean(process.env.SUPABASE_URL),
+      hasKey: Boolean(process.env.SUPABASE_SERVICE_KEY),
+    };
   }
 
   let mydropOrderId = null;
@@ -110,5 +121,6 @@ export default async function handler(req, res) {
     orderId: supabaseId ?? mydropOrderId ?? 'N/A',
     mydropOrderId,
     mydropError,
+    supabaseDebug,
   });
 }
