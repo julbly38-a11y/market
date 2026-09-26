@@ -38,15 +38,16 @@ async function dryRun() {
 async function liveRun() {
   console.log('Підключені постачальники:');
   const vendors = await mydrop.getVendors();
-  console.log(vendors);
+  const vendorList = Array.isArray(vendors) ? vendors : vendors?.results ?? vendors?.data ?? [];
+  console.log(JSON.stringify(vendorList, null, 2));
 
-  const vendorList = Array.isArray(vendors) ? vendors : vendors?.data;
-  if (Array.isArray(vendorList) && vendorList.length > 0) {
+  if (vendorList.length > 0) {
     const first = vendorList[0];
-    console.log(`\nКаталог постачальника "${first.name ?? first.id}" (перші записи):`);
-    const catalog = await mydrop.getVendorCatalog(first.id);
-    const items = Array.isArray(catalog) ? catalog : catalog?.products ?? catalog;
-    console.log(Array.isArray(items) ? items.slice(0, 3) : items);
+    const vendorId = first.vendorId ?? first.id;
+    console.log(`\nКаталог постачальника "${first.vendor?.name ?? vendorId}" (перші записи):`);
+    const catalog = await mydrop.getVendorCatalog(vendorId);
+    const items = Array.isArray(catalog) ? catalog : catalog?.results ?? catalog?.products ?? catalog;
+    console.log(JSON.stringify(Array.isArray(items) ? items.slice(0, 3) : items, null, 2));
   } else {
     console.log('\nПостачальників поки не підключено в кабінеті MyDrop.');
   }
