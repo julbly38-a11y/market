@@ -168,16 +168,29 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 16px;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     gap: 10px;
     box-shadow: 0 1px 2px var(--shadow);
   }
-  .card-icon {
-    width: 34px;
-    height: 34px;
-    color: var(--accent);
+  .card-media {
+    aspect-ratio: 4 / 3;
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .card-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .card-body {
+    padding: 0 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
   }
   .card-name {
     font-size: 15.5px;
@@ -453,22 +466,22 @@
       key: 'clothing', title: 'Одяг та взуття', index: '01', vendor: 'BEZET',
       icon: '<path d="M8 4 4 7v4h2.5V20h11V11H20V7l-4-3-1.5 1.8a3 3 0 0 1-5 0L8 4Z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/>',
       items: [
-        { sku: '10869', name: "Шапка в'язана BEZET Patrol, чорна", price: 499, stock: 20 },
-        { sku: '7432.Bezet', name: "Куртка-вітровка BEZET Траєкторія, камуфляж", price: 2185, stock: 12 },
-        { sku: '10760Bezet', name: "Комплект термобілизни BEZET Extreme, чорний", price: 2299, stock: 10 },
-        { sku: '13112Bezet', name: "Комплект термобілизни BEZET Warm-Shelf, сірий", price: 2799, stock: 8 },
+        { sku: '10869', name: "Шапка в'язана BEZET Patrol, чорна", price: 499, stock: 20, img: 'https://backend.mydrop.com.ua/vendor/products/thumbs/800/74f9799ecdb1646d2117.jpg_original.webp' },
+        { sku: '7432.Bezet', name: "Куртка-вітровка BEZET Траєкторія, камуфляж", price: 2185, stock: 12, img: 'https://backend.mydrop.com.ua/vendor/products/thumbs/800/b2cf664815fe9770e343.jpg.webp' },
+        { sku: '10760Bezet', name: "Комплект термобілизни BEZET Extreme, чорний", price: 2299, stock: 10, img: 'https://backend.mydrop.com.ua/vendor/products/thumbs/800/7a9d861e2e22b463f60c.jpg_original.webp' },
+        { sku: '13112Bezet', name: "Комплект термобілизни BEZET Warm-Shelf, сірий", price: 2799, stock: 8, img: 'https://backend.mydrop.com.ua/vendor/products/thumbs/800/30551b89986638176134.jpg_original.webp' },
       ],
     },
     {
       key: 'power', title: 'Автономна енергія та побут', index: '02', vendor: 'Товарний Синдикат',
       icon: '<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/>',
       items: [
-        { sku: 'LUH03', name: "Набір посуду для обідів, дорожній", price: 499, stock: 13 },
-        { sku: 'BT002E', name: "Автономний дизельний обігрівач BULLTEK BT002E, 12 кВт", price: 6350, stock: 250 },
-        { sku: 'ІН03-015', name: "Гібридний інвертор Big House 12V 2200VA з MPPT", price: 12600, stock: 8 },
-        { sku: '25.6V 100Ah Dumfume', name: "Акумулятор Dumfume LiFePO4 25.6V 100Ah, 2560Вт·год", price: 27000, stock: 10 },
-        { sku: 'SM4500Di', name: "Інверторний бензиновий генератор iPOWER SM4500Di", price: 35000, stock: 7 },
-        { sku: 'BIGHOUSE 1.8 кВт Felicity', name: "Комплект безперебійного живлення BIGHOUSE 1.8 кВт + акумулятор", price: 36500, stock: 17 },
+        { sku: 'LUH03', name: "Набір посуду для обідів, дорожній", price: 499, stock: 13, img: 'https://backend.mydrop.com.ua/vendor/products/thumbs/800/8420337b426ec80f2c3c.png.webp' },
+        { sku: 'BT002E', name: "Автономний дизельний обігрівач BULLTEK BT002E, 12 кВт", price: 6350, stock: 250, img: 'https://backend.mydrop.com.ua/vendor/products/thumbs/800/b72176f47db80510e3d0.jpeg.webp' },
+        { sku: 'ІН03-015', name: "Гібридний інвертор Big House 12V 2200VA з MPPT", price: 12600, stock: 8, img: 'https://backend.mydrop.com.ua/vendor/products/thumbs/800/d7a742d2574ee7134761.jpg.webp' },
+        { sku: '25.6V 100Ah Dumfume', name: "Акумулятор Dumfume LiFePO4 25.6V 100Ah, 2560Вт·год", price: 27000, stock: 10, img: 'https://backend.mydrop.com.ua/vendor/products/thumbs/800/b2cecf9be23fb4623008.jpg.webp' },
+        { sku: 'SM4500Di', name: "Інверторний бензиновий генератор iPOWER SM4500Di", price: 35000, stock: 7, img: 'https://backend.mydrop.com.ua/vendor/products/thumbs/800/1c2983e892eec5a5a161.png.webp' },
+        { sku: 'BIGHOUSE 1.8 кВт Felicity', name: "Комплект безперебійного живлення BIGHOUSE 1.8 кВт + акумулятор", price: 36500, stock: 17, img: 'https://backend.mydrop.com.ua/vendor/products/thumbs/800/da19e0a52a7abd02767c.jpg.webp' },
       ],
     },
   ];
@@ -503,14 +516,16 @@
         <div class="grid">
           ${cat.items.map(item => `
             <article class="card">
-              <svg class="card-icon" viewBox="0 0 24 24">${cat.icon}</svg>
-              <div class="card-name">${item.name}</div>
-              <div class="card-sku">АРТ. ${item.sku}</div>
-              <div class="card-foot">
-                <span class="price num">${item.price.toLocaleString('uk-UA')}</span>
-                <span class="stock">В наявності</span>
+              <div class="card-media"><img src="${item.img}" alt="${item.name.replace(/"/g,'&quot;')}" loading="lazy" /></div>
+              <div class="card-body">
+                <div class="card-name">${item.name}</div>
+                <div class="card-sku">АРТ. ${item.sku}</div>
+                <div class="card-foot">
+                  <span class="price num">${item.price.toLocaleString('uk-UA')}</span>
+                  <span class="stock">В наявності</span>
+                </div>
+                <button class="order-btn" data-cat="${cat.title}" data-vendor="${cat.vendor}" data-sku="${item.sku}" data-name="${item.name.replace(/"/g,'&quot;')}" data-price="${item.price}">Замовити</button>
               </div>
-              <button class="order-btn" data-cat="${cat.title}" data-vendor="${cat.vendor}" data-sku="${item.sku}" data-name="${item.name.replace(/"/g,'&quot;')}" data-price="${item.price}">Замовити</button>
             </article>
           `).join('')}
         </div>
