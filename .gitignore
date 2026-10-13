@@ -1,3 +1,8 @@
 node_modules/
 .env
 *.log
+.vercel
+prom-orders-state.json
+.env.local
+.env*.local
+.DS_Store
