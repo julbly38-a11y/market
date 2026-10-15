@@ -402,8 +402,8 @@
   <main id="catalog"></main>
 
   <footer>
-    Тестова версія вітрини — асортимент, ціни й спосіб оплати ще уточнюються.
-    Розрахунок і видача ТТН — після підтвердження замовлення менеджером.
+    Оплата карткою онлайн (monobank). Відправка Новою Поштою після підтвердження оплати.<br/>
+    <a href="/oferta.html">Публічна оферта</a> · <a href="/povernennya.html">Повернення і доставка</a>
   </footer>
 </div>
 
@@ -448,7 +448,8 @@
     </div>
 
     <div class="form-error" id="formError">Заповніть ім'я, телефон і місто доставки.</div>
-    <button class="submit-btn" id="submitBtn" type="button">Підтвердити замовлення</button>
+    <button class="submit-btn" id="submitBtn" type="button">Оплатити карткою</button>
+    <div class="brand-sub" style="margin-top:10px">Оплата безпечно через monobank (mono pay). Натискаючи кнопку, ви погоджуєтесь з <a href="/oferta.html" target="_blank">офертою</a>.</div>
   </div>
 
   <div class="confirm" id="confirmView">
@@ -456,7 +457,7 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
     <div class="confirm-title">Замовлення прийнято</div>
-    <div class="confirm-body">Номер замовлення <span class="mono" id="confirmId">—</span>.<br/>Менеджер зв'яжеться для підтвердження і розрахунку доставки.</div>
+    <div class="confirm-body">Номер замовлення <span class="mono" id="confirmId">—</span>.<br/>Якщо оплата пройшла, ми передамо замовлення на відправку і зв'яжемось з вами.</div>
   </div>
 </aside>
 
@@ -590,23 +591,17 @@
     errEl.style.display = 'none';
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
-    btn.textContent = 'Надсилаємо…';
+    btn.textContent = 'Переходимо до оплати…';
 
     const order = {
-      category: current.cat,
-      vendor: current.vendor,
       sku: current.sku,
-      productName: current.name,
-      unitPrice: Number(current.price),
       qty,
-      total: qty * Number(current.price),
       customerName: name,
       phone,
       city,
       note: note || null,
     };
 
-    let orderId = '—';
     try {
       const res = await fetch('/api/order', {
         method: 'POST',
@@ -614,21 +609,28 @@
         body: JSON.stringify(order),
       });
       const data = await res.json();
-      orderId = data.orderId ?? '—';
-    } catch (e) {
-      orderId = 'ПОМИЛКА';
-    }
+      if (res.ok && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+        return;
+      }
+    } catch (e) {}
 
-    document.getElementById('confirmId').textContent = orderId;
+    errEl.textContent = 'Не вдалося створити оплату. Спробуйте ще раз або зателефонуйте нам.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Оплатити карткою';
+  });
+
+  // повернення після оплати: /?order=<id>
+  const returned = new URLSearchParams(location.search).get('order');
+  if (returned) {
+    document.getElementById('confirmId').textContent = returned;
     drawerForm.style.display = 'none';
     confirmView.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = 'Підтвердити замовлення';
-    document.getElementById('fName').value = '';
-    document.getElementById('fPhone').value = '';
-    document.getElementById('fCity').value = '';
-    document.getElementById('fNote').value = '';
-  });
+    scrim.dataset.open = 'true';
+    drawer.dataset.open = 'true';
+    history.replaceState(null, '', location.pathname);
+  }
 
   renderFilters();
   renderCatalog();

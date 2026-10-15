@@ -1,6 +1,8 @@
-// Приймає замовлення з форми на сайті: зберігає в Supabase (market.orders)
-// і одразу створює чернетку замовлення в MyDrop (submitted: false —
-// постачальник її ще не бачить, власник подає вручну з кабінету MyDrop).
+// Приймає замовлення з форми: рахує суму на сервері за каталогом, зберігає в Supabase
+// (market.orders, статус pending_payment) і створює рахунок mono pay.
+// Чернетка в MyDrop створюється лише після підтвердження оплати (див. mono-webhook.js).
+
+import { SITE, findItem, sbInsertOrder, sbPatchOrder } from './_shared.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -8,107 +10,78 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { category, vendor, sku, productName, unitPrice, qty, total, customerName, phone, city, note } =
-    req.body || {};
+  const { sku, qty, customerName, phone, city, note } = req.body || {};
+  const quantity = Number(qty);
 
-  if (!vendor || !productName || !unitPrice || !qty || !customerName || !phone || !city) {
+  if (!sku || !customerName || !phone || !city || !Number.isInteger(quantity) || quantity < 1) {
     res.status(400).json({ error: 'missing_fields' });
     return;
   }
 
-  const record = {
-    category: category ?? null,
-    sku: sku ?? null,
-    product_name: productName,
-    unit_price: unitPrice,
-    qty,
-    total: total ?? unitPrice * qty,
-    customer_name: customerName,
-    phone,
-    city,
-    note: note ?? null,
-    status: 'new',
-  };
+  const item = findItem(sku);
+  if (!item) {
+    res.status(400).json({ error: 'unknown_sku' });
+    return;
+  }
+  if (quantity > item.stock) {
+    res.status(400).json({ error: 'not_enough_stock' });
+    return;
+  }
 
-  let supabaseId = null;
+  const total = item.price * quantity;
+
+  let order = null;
   try {
-    const sbRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/orders`, {
-      method: 'POST',
-      headers: {
-        apikey: process.env.SUPABASE_SERVICE_KEY,
-        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
-        'Content-Type': 'application/json',
-        'Accept-Profile': 'market',
-        'Content-Profile': 'market',
-        Prefer: 'return=representation',
-      },
-      body: JSON.stringify([record]),
+    order = await sbInsertOrder({
+      category: item.category,
+      sku: item.sku,
+      product_name: item.name,
+      unit_price: item.price,
+      qty: quantity,
+      total,
+      customer_name: customerName,
+      phone,
+      city,
+      note: note ?? null,
+      status: 'pending_payment',
+      payment_status: 'pending',
     });
-    const sbJson = await sbRes.json();
-    supabaseId = Array.isArray(sbJson) ? sbJson[0]?.id ?? null : null;
   } catch (err) {
     console.error('Supabase insert failed', err);
   }
+  if (!order) {
+    res.status(500).json({ error: 'order_not_saved' });
+    return;
+  }
 
-  let mydropOrderId = null;
-  let mydropError = null;
   try {
-    const mdRes = await fetch('https://backend.mydrop.com.ua/dropshipper/api/orders', {
+    const monoRes = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
       method: 'POST',
-      headers: {
-        'X-API-KEY': process.env.MYDROP_API_KEY,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'X-Token': process.env.MONO_TOKEN, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: customerName,
-        phone,
-        delivery_service: 'nova_poshta',
-        city,
-        products: [
-          {
-            vendor_name: vendor,
-            product_title: productName,
-            sku: sku || undefined,
-            price: unitPrice,
-            amount: qty,
-          },
-        ],
-        order_source: 'Форпост (сайт)',
-        description: note || undefined,
+        amount: total * 100,
+        ccy: 980,
+        merchantPaymInfo: {
+          reference: String(order.id),
+          destination: `Замовлення №${order.id}`,
+          basketOrder: [{ name: item.name, qty: quantity, sum: item.price * 100, code: item.sku }],
+        },
+        redirectUrl: `${SITE}/?order=${encodeURIComponent(order.id)}`,
+        webHookUrl: `${SITE}/api/mono-webhook`,
       }),
     });
-    const mdJson = await mdRes.json();
-    if (mdRes.ok) {
-      mydropOrderId = mdJson.id;
-    } else {
-      mydropError = mdJson.message || mdJson.reason || 'mydrop_error';
+    const mono = await monoRes.json();
+    if (!monoRes.ok || !mono.pageUrl) {
+      console.error('mono invoice failed', monoRes.status, mono);
+      await sbPatchOrder(order.id, { payment_status: 'failed' });
+      res.status(502).json({ error: 'payment_unavailable' });
+      return;
     }
+    await sbPatchOrder(order.id, { invoice_id: mono.invoiceId });
+    res.status(200).json({ ok: true, orderId: order.id, paymentUrl: mono.pageUrl });
   } catch (err) {
-    mydropError = String(err);
+    console.error('mono invoice error', err);
+    await sbPatchOrder(order.id, { payment_status: 'failed' });
+    res.status(502).json({ error: 'payment_unavailable' });
   }
-
-  if (supabaseId && (mydropOrderId || mydropError)) {
-    try {
-      await fetch(`${process.env.SUPABASE_URL}/rest/v1/orders?id=eq.${supabaseId}`, {
-        method: 'PATCH',
-        headers: {
-          apikey: process.env.SUPABASE_SERVICE_KEY,
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
-          'Content-Type': 'application/json',
-          'Accept-Profile': 'market',
-          'Content-Profile': 'market',
-        },
-        body: JSON.stringify({ mydrop_order_id: mydropOrderId, mydrop_error: mydropError }),
-      });
-    } catch (err) {
-      console.error('Supabase update failed', err);
-    }
-  }
-
-  res.status(200).json({
-    ok: true,
-    orderId: supabaseId ?? mydropOrderId ?? 'N/A',
-    mydropOrderId,
-    mydropError,
-  });
 }
