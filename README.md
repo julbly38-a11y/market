@@ -65,7 +65,7 @@ node monitor.js --file urls.txt
 - [web/index.html](web/index.html) — сторінка «Форпост — товари напряму зі складу».
 - [web/catalog.json](web/catalog.json) — каталог для фіду й `prom-orders.js` (сам `index.html` має свою вбудовану копію): 2 категорії («Одяг та взуття» — постачальник BEZET, 4 товари; «Автономна енергія та побут» — Товарний Синдикат, 6 товарів); у кожного товару `sku`, назва, ціна, залишок, фото з MyDrop.
 - [web/api/order.js](web/api/order.js) — приймає замовлення з форми: зберігає в Supabase (`market.orders`) і створює **чернетку** замовлення в MyDrop (`submitted: false`, постачальник її ще не бачить — власник подає вручну з кабінету MyDrop).
-- [web/api/feed.js](web/api/feed.js) — YML-фід каталогу для імпорту в Prom.ua за посиланням (`SITE_URL` — адреса сайту, за замовчуванням заглушка `https://forpost.example`).
+- [web/api/feed.js](web/api/feed.js) — YML-фід каталогу для імпорту в Prom.ua за посиланням (`SITE_URL` — адреса сайту, за замовчуванням заглушка `https://forpost-shop.vercel.app`).
 
 Локальний перегляд:
 

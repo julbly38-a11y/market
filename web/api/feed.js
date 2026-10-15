@@ -4,7 +4,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const SITE = process.env.SITE_URL || 'https://forpost.example';
+const SITE = process.env.SITE_URL || 'https://forpost-shop.vercel.app';
 
 const esc = (s) =>
   String(s ?? '')

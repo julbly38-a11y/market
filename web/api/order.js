@@ -8,11 +8,21 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { category, vendor, sku, productName, unitPrice, qty, total, customerName, phone, city, note } =
-    req.body || {};
+  const { category, vendor, sku, productName, customerName, phone, city, note } = req.body || {};
+  const unitPrice = Number(req.body?.unitPrice);
+  const qty = Number(req.body?.qty);
 
-  if (!vendor || !productName || !unitPrice || !qty || !customerName || !phone || !city) {
+  if (!vendor || !productName || !customerName || !phone || !city) {
     res.status(400).json({ error: 'missing_fields' });
+    return;
+  }
+  if (!(unitPrice > 0) || !Number.isInteger(qty) || qty < 1 || qty > 1000) {
+    res.status(400).json({ error: 'invalid_numbers' });
+    return;
+  }
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY || !process.env.MYDROP_API_KEY) {
+    console.error('Missing env: SUPABASE_URL / SUPABASE_SERVICE_KEY / MYDROP_API_KEY');
+    res.status(500).json({ error: 'server_misconfigured' });
     return;
   }
 
@@ -22,7 +32,7 @@ export default async function handler(req, res) {
     product_name: productName,
     unit_price: unitPrice,
     qty,
-    total: total ?? unitPrice * qty,
+    total: unitPrice * qty,
     customer_name: customerName,
     phone,
     city,
@@ -45,6 +55,7 @@ export default async function handler(req, res) {
       body: JSON.stringify([record]),
     });
     const sbJson = await sbRes.json();
+    if (!sbRes.ok) throw new Error(`Supabase ${sbRes.status}: ${JSON.stringify(sbJson)}`);
     supabaseId = Array.isArray(sbJson) ? sbJson[0]?.id ?? null : null;
   } catch (err) {
     console.error('Supabase insert failed', err);
@@ -77,7 +88,7 @@ export default async function handler(req, res) {
         description: note || undefined,
       }),
     });
-    const mdJson = await mdRes.json();
+    const mdJson = await mdRes.json().catch(() => ({}));
     if (mdRes.ok) {
       mydropOrderId = mdJson.id;
     } else {
@@ -103,6 +114,11 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error('Supabase update failed', err);
     }
+  }
+
+  if (!supabaseId && !mydropOrderId) {
+    res.status(502).json({ error: 'order_not_saved' });
+    return;
   }
 
   res.status(200).json({
