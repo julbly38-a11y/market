@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Відкриває сайт у окремому вікні Chrome (не у вкладці). За замовчуванням helsi.pro.
-# Використання: ./scripts/open-claude-session.sh [URL]
+# Використання: ./scripts/open-chrome-window.sh [URL]
 # Без аргументу відкривається https://helsi.pro.
 set -euo pipefail
 
