@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const PAGE = 48;
 const money = new Intl.NumberFormat('uk-UA');
@@ -73,6 +73,8 @@ export default function Catalog({ products, vendors }) {
         ))}
       </section>
 
+      <PaidNotice />
+
       {order && <OrderForm product={order} onClose={() => setOrder(null)} />}
 
       {limit < filtered.length && (
@@ -97,6 +99,7 @@ function OrderForm({ product, onClose }) {
     bad_qty: 'Невірна кількість',
     unknown_product: 'Товар не знайдено',
     not_saved: 'Не вдалося зберегти замовлення, спробуйте ще раз',
+    payment_unavailable: 'Оплата тимчасово недоступна, спробуйте пізніше',
   };
 
   async function submit(e) {
@@ -109,8 +112,9 @@ function OrderForm({ product, onClose }) {
         body: JSON.stringify({ ...f, qty: Number(f.qty), productId: product.id }),
       });
       const json = await res.json();
-      if (!json.ok) throw new Error(ERR[json.error] || 'Помилка, спробуйте ще раз');
-      setState({ busy: false, error: '', done: json });
+      if (!json.ok || !json.paymentUrl) throw new Error(ERR[json.error] || 'Помилка, спробуйте ще раз');
+      window.location.href = json.paymentUrl; // оплата карткою на сторінці mono pay
+      setState({ busy: true, error: '', done: null });
     } catch (err) {
       setState({ busy: false, error: err.message, done: null });
     }
@@ -136,13 +140,36 @@ function OrderForm({ product, onClose }) {
             <input required type="number" min="1" max={Math.max(product.stock, 1)} value={f.qty} onChange={set('qty')} />
             <input placeholder="Коментар (необов'язково)" value={f.note} onChange={set('note')} />
             <input className="hp" tabIndex="-1" autoComplete="off" name="website" value={f.website} onChange={set('website')} aria-hidden="true" />
+            <p className="dim">Натискаючи кнопку, ви погоджуєтесь з <a href="/oferta" target="_blank">офертою</a>.</p>
             {state.error && <p className="err">{state.error}</p>}
             <div className="row">
               <button type="button" className="ghost" onClick={onClose}>Скасувати</button>
-              <button className="buy" disabled={state.busy}>{state.busy ? 'Надсилаю…' : 'Підтвердити замовлення'}</button>
+              <button className="buy" disabled={state.busy}>{state.busy ? 'Переходимо до оплати…' : 'Оплатити карткою'}</button>
             </div>
           </form>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Після повернення з mono pay (?order=<id>) показуємо подяку. Чи пройшла оплата — підтверджує вебхук.
+function PaidNotice() {
+  const [id, setId] = useState(null);
+  useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get('order');
+    if (v) {
+      setId(v);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+  if (!id) return null;
+  return (
+    <div className="overlay" onClick={() => setId(null)}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h3>Дякуємо за замовлення</h3>
+        <p>Номер: <b>{id}</b>. Якщо оплата пройшла, ми передамо замовлення на відправку і зв'яжемось з вами.</p>
+        <button className="buy" onClick={() => setId(null)}>Закрити</button>
       </div>
     </div>
   );
