@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Відкриває Claude-сесію в окремому вікні Chrome (не у вкладці).
+# Відкриває сайт у окремому вікні Chrome (не у вкладці). За замовчуванням helsi.pro.
 # Використання: ./scripts/open-claude-session.sh [URL]
-# Без аргументу відкривається ця сесія.
+# Без аргументу відкривається https://helsi.pro.
 set -euo pipefail
 
-URL="${1:-https://claude.ai/code/session_01NGASxV9PpUBABJJguazdZa}"
+URL="${1:-https://helsi.pro}"
 
 case "$(uname -s)" in
   Darwin) open -na "Google Chrome" --args --new-window "$URL" ;;
