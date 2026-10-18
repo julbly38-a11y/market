@@ -6,6 +6,25 @@ export const SITE = (process.env.SITE_URL || 'https://forpost-shop.vercel.app').
 
 export const PRODUCTS = new Map(data.products.map((p) => [p.id, p]));
 
+// Актуальна ціна й наявність у постачальника (MyDrop). Окремого запиту на один товар немає,
+// тому тягнемо каталог постачальника; Next кешує відповідь на кілька хвилин.
+// id товару має вигляд "<id постачальника>-<id товару>". Без націнки: ціна = ціна постачальника.
+const MYDROP_BASE = 'https://backend.mydrop.com.ua/dropshipper/api';
+
+export async function getLiveSupplierPrice(productId) {
+  const [vendorId, itemId] = String(productId).split('-');
+  const res = await fetch(`${MYDROP_BASE}/export/dropshipper_vendors/${vendorId}/products/json`, {
+    headers: { 'X-API-KEY': process.env.MYDROP_API_KEY },
+    next: { revalidate: 300 },
+  });
+  if (!res.ok) throw new Error(`mydrop_http_${res.status}`);
+  const json = await res.json();
+  const p = (json.products || []).find((x) => String(x.id) === itemId);
+  if (!p) return null;
+  const stock = (p.sizes || []).reduce((s, z) => s + (z.real_count_dropshipper || 0), 0);
+  return { price: p.price, stock };
+}
+
 const sb = (extra = {}) => ({
   apikey: process.env.SUPABASE_SERVICE_KEY,
   Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
@@ -31,6 +50,15 @@ export async function sbGetOrder(id) {
   });
   const rows = await res.json();
   return Array.isArray(rows) ? rows[0] ?? null : null;
+}
+
+export async function sbListOrders(sinceIso) {
+  const res = await fetch(
+    `${process.env.SUPABASE_URL}/rest/v1/orders?created_at=gte.${encodeURIComponent(sinceIso)}&select=*&order=id.desc&limit=1000`,
+    { headers: sb(), cache: 'no-store' }
+  );
+  const rows = await res.json();
+  return Array.isArray(rows) ? rows : [];
 }
 
 export async function sbPatchOrder(id, fields) {

@@ -4,7 +4,7 @@
 //  3) створюємо рахунок mono pay і віддаємо посилання на оплату.
 // Чернетка MyDrop створюється лише після підтвердженої оплати (див. /api/mono-webhook).
 
-import { PRODUCTS, SITE, sbInsertOrder, sbPatchOrder } from '../../../lib/orders';
+import { PRODUCTS, SITE, getLiveSupplierPrice, sbInsertOrder, sbPatchOrder } from '../../../lib/orders';
 
 const bad = (error, status = 400) => Response.json({ ok: false, error }, { status });
 
@@ -17,7 +17,7 @@ export async function POST(req) {
   }
   if (b.website) return Response.json({ ok: true }); // honeypot для ботів
 
-  const product = PRODUCTS.get(String(b.productId));
+  const catalogItem = PRODUCTS.get(String(b.productId));
   const qty = Number(b.qty);
   const name = String(b.name || '').trim();
   const phone = String(b.phone || '').replace(/[^\d+]/g, '');
@@ -25,7 +25,19 @@ export async function POST(req) {
   const warehouse = String(b.warehouse || '').trim();
   const note = String(b.note || '').trim().slice(0, 500);
 
-  if (!product) return bad('unknown_product');
+  if (!catalogItem) return bad('unknown_product');
+
+  // Ціну й наявність беремо в постачальника наживо; знімок каталогу може бути застарілим.
+  let live;
+  try {
+    live = await getLiveSupplierPrice(catalogItem.id);
+  } catch (err) {
+    console.error('supplier price failed', err);
+    return bad('price_unavailable', 502);
+  }
+  if (!live || !live.price) return bad('price_unavailable', 502);
+  const product = { ...catalogItem, price: live.price, stock: live.stock };
+
   if (!Number.isInteger(qty) || qty < 1 || qty > Math.max(product.stock, 1)) return bad('bad_qty');
   if (name.length < 3 || name.length > 120) return bad('bad_name');
   if (!/^\+?\d{10,13}$/.test(phone)) return bad('bad_phone');

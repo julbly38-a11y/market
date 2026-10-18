@@ -1,25 +1,24 @@
 // Вебхук mono pay. Тілу запиту не довіряємо: беремо invoiceId і перепитуємо статус
 // у monobank із нашим токеном, звіряємо reference і суму. Обробка ідемпотентна.
+// Додатково перевіряємо підпис X-Sign (ECDSA) — чужі запити відсіюються до будь-яких викликів.
 
 import { createMydropDraft, sbGetOrder, sbPatchOrder } from '../../../lib/orders';
+import { getInvoiceStatus, verifyWebhookSign } from '../../../lib/mono';
 
 const json = (body, status = 200) => Response.json(body, { status });
 
 export async function POST(req) {
-  const body = await req.json().catch(() => ({}));
+  const raw = await req.text();
+  if (!(await verifyWebhookSign(raw, req.headers.get('x-sign')))) return json({ error: 'bad_signature' }, 401);
+  let body = {};
+  try {
+    body = JSON.parse(raw);
+  } catch {}
   const invoiceId = body?.invoiceId;
   if (!invoiceId) return json({ error: 'no_invoice' }, 400);
 
   try {
-    const stRes = await fetch(
-      `https://api.monobank.ua/api/merchant/invoice/status?invoiceId=${encodeURIComponent(invoiceId)}`,
-      { headers: { 'X-Token': process.env.MONO_TOKEN } }
-    );
-    const st = await stRes.json().catch(() => ({}));
-    if (!stRes.ok) {
-      console.error('mono status failed', stRes.status, st);
-      return json({ error: 'status_check_failed' }, 502);
-    }
+    const st = await getInvoiceStatus(invoiceId);
 
     const order = await sbGetOrder(st.reference);
     if (!order || order.invoice_id !== invoiceId) return json({ error: 'order_not_found' }, 404);
