@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 
 const PAGE = 48;
 const money = new Intl.NumberFormat('uk-UA');
@@ -10,6 +10,7 @@ export default function Catalog({ products, vendors }) {
   const [vendor, setVendor] = useState('all');
   const [category, setCategory] = useState('all');
   const [inStock, setInStock] = useState(true);
+  const [sort, setSort] = useState('category');
   const [limit, setLimit] = useState(PAGE);
   const [order, setOrder] = useState(null);
 
@@ -20,14 +21,21 @@ export default function Catalog({ products, vendors }) {
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return products.filter(
-      (p) =>
-        (vendor === 'all' || p.vendor === vendor) &&
-        (category === 'all' || p.category === category) &&
-        (!inStock || p.stock > 0) &&
-        (!needle || p.title.toLowerCase().includes(needle) || String(p.sku).toLowerCase().includes(needle))
-    );
-  }, [products, q, vendor, category, inStock]);
+    return products
+      .filter(
+        (p) =>
+          (vendor === 'all' || p.vendor === vendor) &&
+          (category === 'all' || p.category === category) &&
+          (!inStock || p.stock > 0) &&
+          (!needle || p.title.toLowerCase().includes(needle) || String(p.sku).toLowerCase().includes(needle))
+      )
+      .sort((a, b) => {
+        if (sort === 'price_asc') return a.price - b.price || a.title.localeCompare(b.title, 'uk');
+        if (sort === 'price_desc') return b.price - a.price || a.title.localeCompare(b.title, 'uk');
+        // за замовчуванням: по категоріях (за алфавітом, як у списку категорій), усередині — за назвою
+        return a.category.localeCompare(b.category, 'uk') || a.title.localeCompare(b.title, 'uk');
+      });
+  }, [products, q, vendor, category, inStock, sort]);
 
   const reset = (fn) => (e) => {
     fn(e.target.type === 'checkbox' ? e.target.checked : e.target.value);
@@ -46,6 +54,11 @@ export default function Catalog({ products, vendors }) {
           <option value="all">Усі категорії</option>
           {categories.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
+        <select value={sort} onChange={reset(setSort)}>
+          <option value="category">За категоріями</option>
+          <option value="price_asc">Ціна: від дешевих</option>
+          <option value="price_desc">Ціна: від дорогих</option>
+        </select>
         <label className="check">
           <input type="checkbox" checked={inStock} onChange={reset(setInStock)} /> Лише в наявності
         </label>
@@ -54,8 +67,10 @@ export default function Catalog({ products, vendors }) {
       <p className="count">Знайдено: {money.format(filtered.length)}</p>
 
       <section className="grid">
-        {filtered.slice(0, limit).map((p) => (
-          <article className="card" key={p.id}>
+        {filtered.slice(0, limit).map((p, i, list) => (
+          <Fragment key={p.id}>
+          {sort === 'category' && (i === 0 || list[i - 1].category !== p.category) && <h3 className="cat-head">{p.category}</h3>}
+          <article className="card">
             <div className="media">
               <img src={p.image} alt={p.title} loading="lazy" />
             </div>
@@ -70,6 +85,7 @@ export default function Catalog({ products, vendors }) {
               <button className="buy" disabled={p.stock < 1} onClick={() => setOrder(p)}>Замовити</button>
             </div>
           </article>
+          </Fragment>
         ))}
       </section>
 

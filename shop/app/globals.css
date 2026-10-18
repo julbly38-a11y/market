@@ -45,3 +45,11 @@ main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
 .dim { color: var(--dim); margin: 0 0 6px; }
 .err { color: var(--accent); margin: 0; }
 .hp { position: absolute; left: -9999px; }
+
+.cat-head {
+  grid-column: 1 / -1;
+  margin: 20px 0 0;
+  font-size: 18px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+}
