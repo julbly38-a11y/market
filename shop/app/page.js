@@ -7,15 +7,11 @@ const products = data.products.map((p) => ({ ...p, group: groupOf(p) }));
 export default function Page() {
   return (
     <main>
-      <header className="top">
-        <h1>Форпост</h1>
-        <p>Товари напряму зі складу постачальників · оновлено {new Date(data.updated).toLocaleDateString('uk-UA')}</p>
-      </header>
+      <section className="hero">
+        <h1>Усе потрібне — напряму зі складу</h1>
+        <p>Одяг, спорядження, енергія та інше від перевірених постачальників. Оплата карткою, відправка Новою Поштою.</p>
+      </section>
       <Catalog products={products} vendors={data.vendors} />
-      <footer className="dim" style={{ marginTop: 32 }}>
-        Оплата карткою онлайн (monobank). Відправка Новою Поштою після підтвердження оплати.{' '}
-        <a href="/oferta">Публічна оферта</a> · <a href="/povernennya">Повернення і доставка</a>
-      </footer>
     </main>
   );
 }

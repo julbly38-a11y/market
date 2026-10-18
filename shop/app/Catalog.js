@@ -2,9 +2,9 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { GROUPS } from '../lib/groups';
+import { OrderForm, money } from './OrderForm';
 
 const PAGE = 48;
-const money = new Intl.NumberFormat('uk-UA');
 
 export default function Catalog({ products, vendors }) {
   const [q, setQ] = useState('');
@@ -18,7 +18,7 @@ export default function Catalog({ products, vendors }) {
 
   const categories = useMemo(() => {
     const pool = products.filter((p) => (vendor === 'all' || p.vendor === vendor) && (group === 'all' || p.group === group));
-    return [...new Set(pool.map((p) => p.category))].sort((a, b) => a.localeCompare(b, 'uk'));
+    return [...new Set(pool.map((p) => p.category.trim()))].sort((a, b) => a.localeCompare(b, 'uk'));
   }, [products, vendor, group]);
 
   const groupCounts = useMemo(() => {
@@ -34,7 +34,7 @@ export default function Catalog({ products, vendors }) {
         (p) =>
           (vendor === 'all' || p.vendor === vendor) &&
           (group === 'all' || p.group === group) &&
-          (category === 'all' || p.category === category) &&
+          (category === 'all' || p.category.trim() === category) &&
           (!inStock || p.stock > 0) &&
           (!needle || p.title.toLowerCase().includes(needle) || String(p.sku).toLowerCase().includes(needle))
       )
@@ -54,24 +54,36 @@ export default function Catalog({ products, vendors }) {
     fn(e.target.type === 'checkbox' ? e.target.checked : e.target.value);
     setLimit(PAGE);
   };
+  const pickGroup = (g) => {
+    setGroup(g);
+    setCategory('all');
+    setLimit(PAGE);
+  };
 
   return (
     <>
+      <div className="chips" role="tablist" aria-label="Типи товарів">
+        <button className={`chip${group === 'all' ? ' on' : ''}`} onClick={() => pickGroup('all')}>
+          Усі товари <em>{money.format(products.length)}</em>
+        </button>
+        {GROUPS.filter((g) => groupCounts.has(g)).map((g) => (
+          <button key={g} className={`chip${group === g ? ' on' : ''}`} onClick={() => pickGroup(g)}>
+            {g} <em>{groupCounts.get(g)}</em>
+          </button>
+        ))}
+      </div>
+
       <section className="filters">
-        <input type="search" placeholder="Пошук за назвою або артикулом" value={q} onChange={reset(setQ)} />
-        <select value={group} onChange={(e) => { setGroup(e.target.value); setCategory('all'); setLimit(PAGE); }}>
-          <option value="all">Усі типи товарів</option>
-          {GROUPS.filter((g) => groupCounts.has(g)).map((g) => <option key={g} value={g}>{g} ({groupCounts.get(g)})</option>)}
-        </select>
-        <select value={vendor} onChange={(e) => { setVendor(e.target.value); setCategory('all'); setLimit(PAGE); }}>
+        <input type="search" placeholder="Пошук за назвою або артикулом" value={q} onChange={reset(setQ)} aria-label="Пошук" />
+        <select value={vendor} onChange={(e) => { setVendor(e.target.value); setCategory('all'); setLimit(PAGE); }} aria-label="Постачальник">
           <option value="all">Усі постачальники</option>
           {vendors.map((v) => <option key={v} value={v}>{v}</option>)}
         </select>
-        <select value={category} onChange={reset(setCategory)}>
+        <select value={category} onChange={reset(setCategory)} aria-label="Підкатегорія">
           <option value="all">Усі підкатегорії</option>
           {categories.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select value={sort} onChange={reset(setSort)}>
+        <select value={sort} onChange={reset(setSort)} aria-label="Сортування">
           <option value="category">За типами товарів</option>
           <option value="price_asc">Ціна: від дешевих</option>
           <option value="price_desc">Ціна: від дорогих</option>
@@ -81,27 +93,28 @@ export default function Catalog({ products, vendors }) {
         </label>
       </section>
 
-      <p className="count">Знайдено: {money.format(filtered.length)}</p>
+      <p className="count">{money.format(filtered.length)} {filtered.length === 1 ? 'товар' : 'товарів'}</p>
 
       <section className="grid">
+        {filtered.length === 0 && <p className="empty">Нічого не знайдено. Спробуйте змінити пошук або фільтри.</p>}
         {filtered.slice(0, limit).map((p, i, list) => (
           <Fragment key={p.id}>
-          {sort === 'category' && (i === 0 || list[i - 1].group !== p.group) && <h3 className="cat-head">{p.group}</h3>}
-          <article className="card">
-            <div className="media">
-              <img src={p.image} alt={p.title} loading="lazy" />
-            </div>
-            <div className="body">
-              <div className="vendor">{p.vendor} · {p.category}</div>
-              <h2>{p.title}</h2>
-              <div className="sku">Арт. {p.sku}</div>
-              <div className="foot">
-                <span className="price">{money.format(p.price)} ₴</span>
-                <span className={p.stock > 0 ? 'stock ok' : 'stock'}>{p.stock > 0 ? `в наявності: ${p.stock}` : 'немає'}</span>
+            {sort === 'category' && group === 'all' && (i === 0 || list[i - 1].group !== p.group) && <h3 className="cat-head">{p.group}</h3>}
+            <article className="card">
+              <a className="media" href={`/p/${p.id}`} aria-label={p.title}>
+                <img src={p.image} alt="" loading="lazy" />
+                {p.stock < 1 && <span className="badge">Немає в наявності</span>}
+              </a>
+              <div className="body">
+                <div className="vendor">{p.category.trim()}</div>
+                <h2><a href={`/p/${p.id}`}>{p.title}</a></h2>
+                <div className="foot">
+                  <span className="price">{money.format(p.price)} ₴</span>
+                  <span className={p.stock > 0 ? 'stock ok' : 'stock'}>{p.stock > 0 ? 'в наявності' : 'немає'}</span>
+                </div>
+                <button className="buy" disabled={p.stock < 1} onClick={() => setOrder(p)}>Замовити</button>
               </div>
-              <button className="buy" disabled={p.stock < 1} onClick={() => setOrder(p)}>Замовити</button>
-            </div>
-          </article>
+            </article>
           </Fragment>
         ))}
       </section>
@@ -116,73 +129,6 @@ export default function Catalog({ products, vendors }) {
         </div>
       )}
     </>
-  );
-}
-
-function OrderForm({ product, onClose }) {
-  const [f, setF] = useState({ name: '', phone: '+380', city: '', warehouse: '', qty: 1, note: '', website: '' });
-  const [state, setState] = useState({ busy: false, error: '', done: null });
-  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
-
-  const ERR = {
-    bad_name: 'Вкажіть ПІБ повністю',
-    bad_phone: 'Невірний номер телефону',
-    bad_city: 'Вкажіть місто',
-    bad_warehouse: 'Номер відділення Нової пошти — лише цифри',
-    bad_qty: 'Невірна кількість',
-    unknown_product: 'Товар не знайдено',
-    not_saved: 'Не вдалося зберегти замовлення, спробуйте ще раз',
-    payment_unavailable: 'Оплата тимчасово недоступна, спробуйте пізніше',
-  };
-
-  async function submit(e) {
-    e.preventDefault();
-    setState({ busy: true, error: '', done: null });
-    try {
-      const res = await fetch('/api/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...f, qty: Number(f.qty), productId: product.id }),
-      });
-      const json = await res.json();
-      if (!json.ok || !json.paymentUrl) throw new Error(ERR[json.error] || 'Помилка, спробуйте ще раз');
-      window.location.href = json.paymentUrl; // оплата карткою на сторінці mono pay
-      setState({ busy: true, error: '', done: null });
-    } catch (err) {
-      setState({ busy: false, error: err.message, done: null });
-    }
-  }
-
-  return (
-    <div className="overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        {state.done ? (
-          <>
-            <h3>Замовлення прийнято</h3>
-            <p>Номер: <b>{state.done.orderId}</b>. Ми зв'яжемось для підтвердження.</p>
-            <button className="buy" onClick={onClose}>Закрити</button>
-          </>
-        ) : (
-          <form onSubmit={submit}>
-            <h3>{product.title}</h3>
-            <p className="dim">{money.format(product.price * f.qty)} ₴ · {product.vendor}</p>
-            <input required placeholder="ПІБ" value={f.name} onChange={set('name')} />
-            <input required placeholder="Телефон" value={f.phone} onChange={set('phone')} inputMode="tel" />
-            <input required placeholder="Місто" value={f.city} onChange={set('city')} />
-            <input required placeholder="№ відділення Нової пошти" value={f.warehouse} onChange={set('warehouse')} inputMode="numeric" />
-            <input required type="number" min="1" max={Math.max(product.stock, 1)} value={f.qty} onChange={set('qty')} />
-            <input placeholder="Коментар (необов'язково)" value={f.note} onChange={set('note')} />
-            <input className="hp" tabIndex="-1" autoComplete="off" name="website" value={f.website} onChange={set('website')} aria-hidden="true" />
-            <p className="dim">Натискаючи кнопку, ви погоджуєтесь з <a href="/oferta" target="_blank">офертою</a>.</p>
-            {state.error && <p className="err">{state.error}</p>}
-            <div className="row">
-              <button type="button" className="ghost" onClick={onClose}>Скасувати</button>
-              <button className="buy" disabled={state.busy}>{state.busy ? 'Переходимо до оплати…' : 'Оплатити карткою'}</button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
   );
 }
 
