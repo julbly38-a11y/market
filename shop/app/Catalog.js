@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
+import { GROUPS } from '../lib/groups';
 
 const PAGE = 48;
 const money = new Intl.NumberFormat('uk-UA');
@@ -8,6 +9,7 @@ const money = new Intl.NumberFormat('uk-UA');
 export default function Catalog({ products, vendors }) {
   const [q, setQ] = useState('');
   const [vendor, setVendor] = useState('all');
+  const [group, setGroup] = useState('all');
   const [category, setCategory] = useState('all');
   const [inStock, setInStock] = useState(true);
   const [sort, setSort] = useState('category');
@@ -15,9 +17,15 @@ export default function Catalog({ products, vendors }) {
   const [order, setOrder] = useState(null);
 
   const categories = useMemo(() => {
-    const pool = vendor === 'all' ? products : products.filter((p) => p.vendor === vendor);
+    const pool = products.filter((p) => (vendor === 'all' || p.vendor === vendor) && (group === 'all' || p.group === group));
     return [...new Set(pool.map((p) => p.category))].sort((a, b) => a.localeCompare(b, 'uk'));
-  }, [products, vendor]);
+  }, [products, vendor, group]);
+
+  const groupCounts = useMemo(() => {
+    const m = new Map();
+    for (const p of products) m.set(p.group, (m.get(p.group) || 0) + 1);
+    return m;
+  }, [products]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -25,6 +33,7 @@ export default function Catalog({ products, vendors }) {
       .filter(
         (p) =>
           (vendor === 'all' || p.vendor === vendor) &&
+          (group === 'all' || p.group === group) &&
           (category === 'all' || p.category === category) &&
           (!inStock || p.stock > 0) &&
           (!needle || p.title.toLowerCase().includes(needle) || String(p.sku).toLowerCase().includes(needle))
@@ -32,10 +41,14 @@ export default function Catalog({ products, vendors }) {
       .sort((a, b) => {
         if (sort === 'price_asc') return a.price - b.price || a.title.localeCompare(b.title, 'uk');
         if (sort === 'price_desc') return b.price - a.price || a.title.localeCompare(b.title, 'uk');
-        // за замовчуванням: по категоріях (за алфавітом, як у списку категорій), усередині — за назвою
-        return a.category.localeCompare(b.category, 'uk') || a.title.localeCompare(b.title, 'uk');
+        // за замовчуванням: по групах (типах товарів) у заданому порядку, далі категорія і назва
+        return (
+          GROUPS.indexOf(a.group) - GROUPS.indexOf(b.group) ||
+          a.category.localeCompare(b.category, 'uk') ||
+          a.title.localeCompare(b.title, 'uk')
+        );
       });
-  }, [products, q, vendor, category, inStock, sort]);
+  }, [products, q, vendor, group, category, inStock, sort]);
 
   const reset = (fn) => (e) => {
     fn(e.target.type === 'checkbox' ? e.target.checked : e.target.value);
@@ -46,16 +59,20 @@ export default function Catalog({ products, vendors }) {
     <>
       <section className="filters">
         <input type="search" placeholder="Пошук за назвою або артикулом" value={q} onChange={reset(setQ)} />
+        <select value={group} onChange={(e) => { setGroup(e.target.value); setCategory('all'); setLimit(PAGE); }}>
+          <option value="all">Усі типи товарів</option>
+          {GROUPS.filter((g) => groupCounts.has(g)).map((g) => <option key={g} value={g}>{g} ({groupCounts.get(g)})</option>)}
+        </select>
         <select value={vendor} onChange={(e) => { setVendor(e.target.value); setCategory('all'); setLimit(PAGE); }}>
           <option value="all">Усі постачальники</option>
           {vendors.map((v) => <option key={v} value={v}>{v}</option>)}
         </select>
         <select value={category} onChange={reset(setCategory)}>
-          <option value="all">Усі категорії</option>
+          <option value="all">Усі підкатегорії</option>
           {categories.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
         <select value={sort} onChange={reset(setSort)}>
-          <option value="category">За категоріями</option>
+          <option value="category">За типами товарів</option>
           <option value="price_asc">Ціна: від дешевих</option>
           <option value="price_desc">Ціна: від дорогих</option>
         </select>
@@ -69,7 +86,7 @@ export default function Catalog({ products, vendors }) {
       <section className="grid">
         {filtered.slice(0, limit).map((p, i, list) => (
           <Fragment key={p.id}>
-          {sort === 'category' && (i === 0 || list[i - 1].category !== p.category) && <h3 className="cat-head">{p.category}</h3>}
+          {sort === 'category' && (i === 0 || list[i - 1].group !== p.group) && <h3 className="cat-head">{p.group}</h3>}
           <article className="card">
             <div className="media">
               <img src={p.image} alt={p.title} loading="lazy" />
