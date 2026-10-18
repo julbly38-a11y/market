@@ -1,11 +1,12 @@
 // Фінанси: виписка еквайрингу monobank за період, звірена із замовленнями (market.orders).
 // GET /api/finance?days=30   Заголовок X-Finance-Key = FINANCE_KEY. Без ключа в env відповідає 503.
-// Суми в гривнях. Комісія = amount − profitAmount (з виписки), валова виручка = amount.
+// Суми в гривнях. Прибуток = виручка − комісія − єдиний податок (TAX_PERCENT) − закупівля (supplier_price).
 
 import { getClientInfo, getDetails, getPersonalStatement, getRates, getStatement } from '../../../lib/mono';
 import { sbListOrders } from '../../../lib/orders';
+import { FEE_PERCENT, MARKUP_PERCENT, TAX_PERCENT, breakEvenMarkupPercent } from '../../../lib/pricing';
 
-const uah = (kop) => Math.round(kop) / 100;
+const uah = (kop) => Math.round(kop) / 100; // копійки → гривні (для балансу рахунку)
 
 export async function GET(req) {
   const key = process.env.FINANCE_KEY;
@@ -27,30 +28,38 @@ export async function GET(req) {
     const byRef = new Map(orders.map((o) => [String(o.id), o]));
     const paid = statement.filter((p) => p.status === 'success');
 
-    let gross = 0;
-    let net = 0;
-    let refunded = 0;
+    // Прибуток по платежу = виручка − комісія еквайрингу − єдиний податок − закупівля у постачальника.
+    // Комісія: з виписки (amount − profitAmount), а коли банк її ще не показав — за MONO_FEE_PERCENT.
+    const t = { gross: 0, fee: 0, tax: 0, cost: 0, refunded: 0, profit: 0, unmatched: 0 };
     const rows = paid.map((p) => {
       const order = byRef.get(String(p.reference));
       const cancelled = (p.cancelList || []).reduce((s, c) => s + c.amount, 0);
-      gross += p.amount;
-      net += p.profitAmount ?? p.amount;
-      refunded += cancelled;
+      const amount = p.amount / 100;
+      const feeKnown = p.profitAmount != null;
+      const fee = feeKnown ? (p.amount - p.profitAmount) / 100 : (amount * FEE_PERCENT) / 100;
+      const tax = (amount * TAX_PERCENT) / 100;
+      const cost = order ? (order.supplier_price ?? order.unit_price) * order.qty : null;
+      const profit = cost == null ? null : amount - fee - tax - cost;
+      t.gross += amount; t.fee += fee; t.tax += tax; t.refunded += cancelled / 100;
+      if (cost == null) t.unmatched++; else { t.cost += cost; t.profit += profit; }
       return {
         invoiceId: p.invoiceId,
         date: p.date,
         orderId: order?.id ?? null,
+        source: order?.source ?? null,
         product: order?.product_name ?? p.destination,
-        amount: uah(p.amount),
-        fee: uah(p.amount - (p.profitAmount ?? p.amount)),
-        net: uah(p.profitAmount ?? p.amount),
-        refunded: uah(cancelled),
-        // закупівля = ціна постачальника на момент замовлення (supplier_price, а якщо її немає — ціна продажу)
-        supplierCost: order ? (order.supplier_price ?? order.unit_price) * order.qty : null,
+        amount,
+        fee: Math.round(fee * 100) / 100,
+        feeFromBank: feeKnown,
+        tax: Math.round(tax * 100) / 100,
+        supplierCost: cost,
+        profit: profit == null ? null : Math.round(profit * 100) / 100,
+        refunded: cancelled / 100,
         orderPaymentStatus: order?.payment_status ?? null,
         mismatch: order ? Math.round(order.total * 100) !== p.amount : true,
       };
     });
+    const r2 = (n) => Math.round(n * 100) / 100;
 
     const stmtRefs = new Set(paid.map((p) => String(p.reference)));
     const paidWithoutStatement = orders
@@ -82,12 +91,22 @@ export async function GET(req) {
       merchant: { id: merchant.merchantId, name: merchant.merchantName },
       periodDays: days,
       rates,
+      pricing: {
+        markupPercent: MARKUP_PERCENT,
+        taxPercent: TAX_PERCENT,
+        feePercent: FEE_PERCENT,
+        breakEvenMarkupPercent: breakEvenMarkupPercent(),
+      },
       totals: {
         payments: paid.length,
-        gross: uah(gross),
-        fee: uah(gross - net),
-        net: uah(net),
-        refunded: uah(refunded),
+        gross: r2(t.gross),
+        fee: r2(t.fee),
+        tax: r2(t.tax),
+        supplierCost: r2(t.cost),
+        profit: r2(t.profit),
+        marginPercent: t.gross ? Math.round((t.profit / t.gross) * 1000) / 10 : null,
+        refunded: r2(t.refunded),
+        withoutOrder: t.unmatched,
       },
       rows,
       paidWithoutStatement, // оплачено за нашою базою, але немає в виписці

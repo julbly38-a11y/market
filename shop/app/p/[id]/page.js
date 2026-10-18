@@ -2,8 +2,12 @@ import { notFound } from 'next/navigation';
 import data from '../../../data/products.json';
 import { groupOf } from '../../../lib/groups';
 import ProductBuy from './ProductBuy';
+import { retailPrice } from '../../../lib/pricing';
 
-const find = (id) => data.products.find((p) => p.id === id);
+const find = (id) => {
+  const p = data.products.find((x) => x.id === id);
+  return p && { ...p, price: retailPrice(p.price) };
+};
 
 export async function generateMetadata({ params }) {
   const { id } = await params;

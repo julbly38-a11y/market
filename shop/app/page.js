@@ -1,8 +1,9 @@
 import data from '../data/products.json';
 import Catalog from './Catalog';
 import { groupOf } from '../lib/groups';
+import { retailPrice } from '../lib/pricing';
 
-const products = data.products.map((p) => ({ ...p, group: groupOf(p) }));
+const products = data.products.map((p) => ({ ...p, price: retailPrice(p.price), group: groupOf(p) }));
 
 export default function Page() {
   return (

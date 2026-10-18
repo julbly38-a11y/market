@@ -4,6 +4,7 @@
 //  3) створюємо рахунок mono pay і віддаємо посилання на оплату.
 // Чернетка MyDrop створюється лише після підтвердженої оплати (див. /api/mono-webhook).
 
+import { retailPrice } from '../../../lib/pricing';
 import { PRODUCTS, SITE, getLiveSupplierPrice, sbInsertOrder, sbPatchOrder } from '../../../lib/orders';
 
 const bad = (error, status = 400) => Response.json({ ok: false, error }, { status });
@@ -36,7 +37,7 @@ export async function POST(req) {
     return bad('price_unavailable', 502);
   }
   if (!live || !live.price) return bad('price_unavailable', 502);
-  const product = { ...catalogItem, price: live.price, stock: live.stock };
+  const product = { ...catalogItem, price: retailPrice(live.price), stock: live.stock };
 
   if (!Number.isInteger(qty) || qty < 1 || qty > Math.max(product.stock, 1)) return bad('bad_qty');
   if (name.length < 3 || name.length > 120) return bad('bad_name');
@@ -53,6 +54,7 @@ export async function POST(req) {
       sku: product.sku,
       product_name: product.title,
       unit_price: product.price,
+      supplier_price: live.price,
       qty,
       total,
       customer_name: name,
