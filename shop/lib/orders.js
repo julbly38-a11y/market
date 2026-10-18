@@ -7,22 +7,39 @@ export const SITE = (process.env.SITE_URL || 'https://forpost-shop.vercel.app').
 export const PRODUCTS = new Map(data.products.map((p) => [p.id, p]));
 
 // Актуальна ціна й наявність у постачальника (MyDrop). Окремого запиту на один товар немає,
-// тому тягнемо каталог постачальника; Next кешує відповідь на кілька хвилин.
+// тому тягнемо каталог постачальника (~13 МБ, у кеш Next він не влазить) і зберігаємо в памʼяті
+// процесу лише {id: {price, stock}} на 5 хвилин. Одночасні запити ділять один завантажений каталог.
 // id товару має вигляд "<id постачальника>-<id товару>". Без націнки: ціна = ціна постачальника.
 const MYDROP_BASE = 'https://backend.mydrop.com.ua/dropshipper/api';
+const PRICE_TTL_MS = 5 * 60 * 1000;
+const vendorPrices = new Map(); // vendorId -> { at, promise }
+
+function loadVendorPrices(vendorId) {
+  const promise = (async () => {
+    const res = await fetch(`${MYDROP_BASE}/export/dropshipper_vendors/${vendorId}/products/json`, {
+      headers: { 'X-API-KEY': process.env.MYDROP_API_KEY },
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error(`mydrop_http_${res.status}`);
+    const json = await res.json();
+    const items = new Map();
+    for (const p of json.products || []) {
+      const stock = (p.sizes || []).reduce((sum, z) => sum + (z.real_count_dropshipper || 0), 0);
+      items.set(String(p.id), { price: p.price, stock });
+    }
+    return items;
+  })();
+  vendorPrices.set(vendorId, { at: Date.now(), promise });
+  // невдалий запит не кешуємо, щоб наступне замовлення спробувало знову
+  promise.catch(() => vendorPrices.get(vendorId)?.promise === promise && vendorPrices.delete(vendorId));
+  return promise;
+}
 
 export async function getLiveSupplierPrice(productId) {
   const [vendorId, itemId] = String(productId).split('-');
-  const res = await fetch(`${MYDROP_BASE}/export/dropshipper_vendors/${vendorId}/products/json`, {
-    headers: { 'X-API-KEY': process.env.MYDROP_API_KEY },
-    next: { revalidate: 300 },
-  });
-  if (!res.ok) throw new Error(`mydrop_http_${res.status}`);
-  const json = await res.json();
-  const p = (json.products || []).find((x) => String(x.id) === itemId);
-  if (!p) return null;
-  const stock = (p.sizes || []).reduce((s, z) => s + (z.real_count_dropshipper || 0), 0);
-  return { price: p.price, stock };
+  const hit = vendorPrices.get(vendorId);
+  const items = await (hit && Date.now() - hit.at < PRICE_TTL_MS ? hit.promise : loadVendorPrices(vendorId));
+  return items.get(itemId) ?? null;
 }
 
 const sb = (extra = {}) => ({
