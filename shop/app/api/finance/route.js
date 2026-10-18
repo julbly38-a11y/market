@@ -45,8 +45,8 @@ export async function GET(req) {
         fee: uah(p.amount - (p.profitAmount ?? p.amount)),
         net: uah(p.profitAmount ?? p.amount),
         refunded: uah(cancelled),
-        // закупівля = ціна постачальника на момент замовлення (націнки поки немає, тож маржа = 0 до комісії)
-        supplierCost: order ? order.unit_price * order.qty : null,
+        // закупівля = ціна постачальника на момент замовлення (supplier_price, а якщо її немає — ціна продажу)
+        supplierCost: order ? (order.supplier_price ?? order.unit_price) * order.qty : null,
         orderPaymentStatus: order?.payment_status ?? null,
         mismatch: order ? Math.round(order.total * 100) !== p.amount : true,
       };

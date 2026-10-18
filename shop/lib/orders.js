@@ -35,6 +35,12 @@ function loadVendorPrices(vendorId) {
   return promise;
 }
 
+// Живі {id: {price, stock}} усього каталогу постачальника (той самий кеш на 5 хв).
+export async function getVendorPrices(vendorId) {
+  const hit = vendorPrices.get(vendorId);
+  return hit && Date.now() - hit.at < PRICE_TTL_MS ? hit.promise : loadVendorPrices(vendorId);
+}
+
 export async function getLiveSupplierPrice(productId) {
   const [vendorId, itemId] = String(productId).split('-');
   const hit = vendorPrices.get(vendorId);
@@ -65,6 +71,15 @@ export async function sbGetOrder(id) {
   const res = await fetch(`${process.env.SUPABASE_URL}/rest/v1/orders?id=eq.${encodeURIComponent(id)}&select=*`, {
     headers: sb(),
   });
+  const rows = await res.json();
+  return Array.isArray(rows) ? rows[0] ?? null : null;
+}
+
+export async function sbFindByPromId(promOrderId) {
+  const res = await fetch(
+    `${process.env.SUPABASE_URL}/rest/v1/orders?prom_order_id=eq.${encodeURIComponent(promOrderId)}&select=*`,
+    { headers: sb(), cache: 'no-store' }
+  );
   const rows = await res.json();
   return Array.isArray(rows) ? rows[0] ?? null : null;
 }
