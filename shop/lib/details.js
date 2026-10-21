@@ -2,6 +2,7 @@
 import { sb } from './orders';
 
 export async function getProductDetails(id, { fresh = false } = {}) {
+  if (!process.env.SUPABASE_URL) return null;
   try {
     const res = await fetch(
       `${process.env.SUPABASE_URL}/rest/v1/product_details?id=eq.${encodeURIComponent(id)}&select=description,images,sizes,size_chart`,
@@ -46,6 +47,7 @@ export function detailsRow(id, item) {
 
 // Схвалені відгуки товару (market.reviews, approved = true). Порожній масив, якщо відгуків нема.
 export async function getApprovedReviews(productId) {
+  if (!process.env.SUPABASE_URL) return [];
   try {
     const res = await fetch(
       `${process.env.SUPABASE_URL}/rest/v1/reviews?product_id=eq.${encodeURIComponent(productId)}&approved=is.true&select=rating,name,text,verified,created_at&order=created_at.desc&limit=50`,

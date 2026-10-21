@@ -5,6 +5,7 @@ import { sb } from './orders';
 
 export async function getFreshPrices() {
   const map = new Map();
+  if (!process.env.SUPABASE_URL) return map; // збірка/preview без змінних: показуємо знімок каталогу
   try {
     for (let from = 0; ; from += 1000) {
       const res = await fetch(

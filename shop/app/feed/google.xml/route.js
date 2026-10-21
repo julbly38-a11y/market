@@ -6,12 +6,14 @@ import { getFreshPrices } from '../../../lib/prices';
 import { sb } from '../../../lib/orders';
 import { SITE_BASE } from '../../../lib/site';
 
-export const revalidate = 3600;
+// Фід будується на запит (не під час збірки); кеш — заголовок Cache-Control і дата-кеш fetch.
+export const dynamic = 'force-dynamic';
 
 const esc = (s) => String(s ?? '').replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[c]);
 
 async function loadDetails() {
   const map = new Map();
+  if (!process.env.SUPABASE_URL) return map;
   try {
     for (let from = 0; ; from += 1000) {
       const res = await fetch(`${process.env.SUPABASE_URL}/rest/v1/product_details?select=id,description,images&order=id&limit=1000&offset=${from}`, { headers: sb(), next: { revalidate: 3600 } });
