@@ -2,6 +2,7 @@
 // У Merchant Center: Продукти → Фіди → додати фід за URL <сайт>/feed/google.xml, країна Україна, мова українська.
 import data from '../../../data/products.json';
 import { retailPrice } from '../../../lib/pricing';
+import { groupOf, typeOf } from '../../../lib/groups';
 import { getFreshPrices } from '../../../lib/prices';
 import { sb } from '../../../lib/orders';
 import { SITE_BASE } from '../../../lib/site';
@@ -49,7 +50,7 @@ ${images.slice(1, 6).map((u) => `<g:additional_image_link>${esc(u)}</g:additiona
 <g:price>${price}.00 UAH</g:price>
 <g:condition>new</g:condition>
 <g:identifier_exists>no</g:identifier_exists>
-<g:product_type>${esc(p.category.trim())}</g:product_type>
+<g:product_type>${esc(`${groupOf(p)} > ${typeOf(p)}`)}</g:product_type>
 </item>`);
   }
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

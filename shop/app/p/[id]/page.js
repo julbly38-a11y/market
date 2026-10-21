@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import data from '../../../data/products.json';
-import { groupOf } from '../../../lib/groups';
+import { groupOf, typeOf } from '../../../lib/groups';
 import ProductBuy from './ProductBuy';
 import Gallery from './Gallery';
 import ReviewBox from './ReviewBox';
@@ -64,7 +64,7 @@ export default async function Page({ params }) {
       <nav className="crumbs" aria-label="Навігація">
         <a href="/">Каталог</a><span>/</span>
         <span>{group}</span><span>/</span>
-        <span>{p.category.trim()}</span>
+        <span>{typeOf(p, group)}</span>
       </nav>
 
       <div className="product">

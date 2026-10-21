@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { GROUPS } from '../lib/groups';
+import { GROUPS, typeRank } from '../lib/groups';
 import { money } from './OrderForm';
 
 const PAGE = 48;
@@ -19,7 +19,11 @@ export default function Catalog({ products, vendors }) {
 
   const categories = useMemo(() => {
     const pool = products.filter((p) => (vendor === 'all' || p.vendor === vendor) && (group === 'all' || p.group === group));
-    return [...new Set(pool.map((p) => p.category.trim()))].sort((a, b) => a.localeCompare(b, 'uk'));
+    const counts = new Map();
+    for (const p of pool) counts.set(p.type, (counts.get(p.type) || 0) + 1);
+    return [...counts]
+      .sort((a, b) => typeRank(group, a[0]) - typeRank(group, b[0]) || b[1] - a[1] || a[0].localeCompare(b[0], 'uk'))
+      .map(([name, count]) => ({ name, count }));
   }, [products, vendor, group]);
 
   const groupCounts = useMemo(() => {
@@ -35,7 +39,7 @@ export default function Catalog({ products, vendors }) {
         (p) =>
           (vendor === 'all' || p.vendor === vendor) &&
           (group === 'all' || p.group === group) &&
-          (category === 'all' || p.category.trim() === category) &&
+          (category === 'all' || p.type === category) &&
           (!inStock || p.stock > 0) &&
           (!minP || p.price >= Number(minP)) &&
           (!maxP || p.price <= Number(maxP)) &&
@@ -70,15 +74,27 @@ export default function Catalog({ products, vendors }) {
     if (g && GROUPS.includes(g)) {
       setGroup(g);
       const c = sp.get('c');
-      setCategory(c && products.some((p) => p.group === g && p.category.trim() === c) ? c : 'all');
+      setCategory(c && products.some((p) => p.group === g && p.type === c) ? c : 'all');
     }
   }, []);
 
   const groupBtn = (g, label, n) => (
-    <button key={g} className={`side-link${group === g ? ' on' : ''}`} onClick={() => pickGroup(g)}>
-      <span>{label}</span>
-      <em>{n}</em>
-    </button>
+    <Fragment key={g}>
+      <button className={`side-link${group === g && category === 'all' ? ' on' : group === g ? ' open' : ''}`} onClick={() => pickGroup(g)}>
+        <span>{label}</span>
+        <em>{n}</em>
+      </button>
+      {group === g && g !== 'all' && categories.length > 1 && (
+        <div className="side-sub">
+          {categories.map((c) => (
+            <button key={c.name} className={`side-sub-link${category === c.name ? ' on' : ''}`} onClick={() => { setCategory(c.name); setLimit(PAGE); }}>
+              <span>{c.name}</span>
+              <em>{c.count}</em>
+            </button>
+          ))}
+        </div>
+      )}
+    </Fragment>
   );
 
   return (
@@ -98,9 +114,9 @@ export default function Catalog({ products, vendors }) {
               <option value="all">Усі постачальники</option>
               {vendors.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
-            <select value={category} onChange={reset(setCategory)} aria-label="Підкатегорія">
-              <option value="all">Усі підкатегорії</option>
-              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            <select className="sel-type" value={category} onChange={reset(setCategory)} aria-label="Тип товару">
+              <option value="all">Усі типи товарів</option>
+              {categories.map((c) => <option key={c.name} value={c.name}>{c.name} ({c.count})</option>)}
             </select>
             <div className="price-range">
               <input type="number" min="0" inputMode="numeric" placeholder="Ціна від" value={minP} onChange={reset(setMinP)} aria-label="Ціна від" />
@@ -149,7 +165,7 @@ export default function Catalog({ products, vendors }) {
                   </a>
                   <div className="body">
                     <h2><a href={`/p/${p.id}`}>{p.title}</a></h2>
-                    <div className="vendor">{p.category.trim()}</div>
+                    <div className="vendor">{p.type}</div>
                     <div className="price">{money.format(p.price)} ₴</div>
                   </div>
                 </article>
