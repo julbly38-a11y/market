@@ -3,6 +3,7 @@
 // Додатково перевіряємо підпис X-Sign (ECDSA) — чужі запити відсіюються до будь-яких викликів.
 
 import { createMydropDraft, sbGetOrder, sbPatchOrder } from '../../../lib/orders';
+import { notifyPaidOrder } from '../../../lib/notify';
 import { getInvoiceStatus, verifyWebhookSign } from '../../../lib/mono';
 
 const json = (body, status = 200) => Response.json(body, { status });
@@ -39,6 +40,7 @@ export async function POST(req) {
 
     const md = await createMydropDraft(order).catch((err) => ({ id: null, error: String(err) }));
     await sbPatchOrder(order.id, { mydrop_order_id: md.id, mydrop_error: md.error });
+    await notifyPaidOrder(order, md);
 
     return json({ ok: true });
   } catch (err) {
