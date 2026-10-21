@@ -17,9 +17,6 @@ export default async function Page() {
     <>
       <section className="hero-dark">
         <div className="wrap hero-in">
-          <p className="hero-eyebrow">Форпост</p>
-          <h1>Усе потрібне — напряму зі складу</h1>
-          <p className="hero-sub">Одяг, спорядження й енергія від перевірених постачальників. Оплата карткою або накладеним платежем, відправка Новою Поштою.</p>
           <a className="btn-outline" href="#catalog">До каталогу</a>
         </div>
       </section>
