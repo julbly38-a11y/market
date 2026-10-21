@@ -238,12 +238,16 @@ main { max-width: 1240px; margin: 0 auto; padding: 28px 20px 72px; }
 .cat-group.gone { max-width: 0; opacity: 0; margin-right: -14px; pointer-events: none; }
 .cat-group.open { flex: 1 1 auto; min-width: 0; max-width: none; gap: 14px; }
 .cat-group.open .cat-card:not(.sub) { outline: 2px solid var(--lime); outline-offset: -2px; }
-.sub-scroll { display: flex; gap: 14px; flex: 1; min-width: 0; height: 100%; overflow-x: auto; scrollbar-width: none; animation: subIn .28s ease both; }
+.sub-scroll { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; height: 100%; overflow-x: auto; scrollbar-width: none; animation: subIn .28s ease both; }
 .sub-scroll::-webkit-scrollbar { display: none; }
-.cat-card.sub { flex: 0 0 clamp(173px, 19.2vw, 294px); }
-.more-card { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 14px; border: 1px solid #3a3a38; background: transparent; padding: 24px; }
-.more-card .more-arrow { font-size: 2rem; color: var(--lime); }
+.cat-card.sub { flex: 0 0 clamp(103.5px, 12.95vw, 198.5px); height: 50%; }
+.cat-card.sub .cat-info { padding: 28px 10px 10px; }
+.cat-card.sub .cat-name { font-size: .68rem; letter-spacing: .08em; }
+.cat-card.sub .cat-count { font-size: .68rem; }
+.more-card { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 10px; border: 1px solid #3a3a38; background: transparent; padding: 14px; }
+.more-card .cat-name { font-size: .68rem; }
+.more-card .more-arrow { font-size: 1.5rem; color: var(--lime); }
 .more-card:hover { border-color: var(--lime); }
 @keyframes subIn { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
-@media (max-width: 560px) { .hero-field { height: clamp(380px, 62vh, 520px); } .cat-card { flex-basis: 62.4vw; } .cat-card.sub { flex-basis: 45.1vw; } .cat-info { padding: 40px 14px 14px; } }
+@media (max-width: 560px) { .hero-field { height: clamp(380px, 62vh, 520px); } .cat-card { flex-basis: 62.4vw; } .cat-card.sub { flex-basis: 31.2vw; } .cat-info { padding: 40px 14px 14px; } }
 @media (prefers-reduced-motion: reduce) { .cat-group, .sub-scroll { transition: none; animation: none; } }
