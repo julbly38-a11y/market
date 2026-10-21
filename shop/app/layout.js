@@ -4,8 +4,10 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin', 'cyrillic'], display: 'swap', variable: '--font' });
 
 export const metadata = {
+  metadataBase: new URL(process.env.SITE_URL || 'https://forpost-shop.vercel.app'),
   title: 'Форпост — товари напряму зі складу',
   description: 'Одяг, спорядження, енергія та інше напряму від постачальників. Оплата карткою, доставка Новою Поштою.',
+  openGraph: { siteName: 'Форпост', locale: 'uk_UA', type: 'website' },
 };
 
 export const viewport = { width: 'device-width', initialScale: 1, themeColor: '#faf9f7' };

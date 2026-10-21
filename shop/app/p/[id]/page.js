@@ -6,26 +6,28 @@ import Gallery from './Gallery';
 import ReviewBox from './ReviewBox';
 import { getApprovedReviews, getProductDetails } from '../../../lib/details';
 import { retailPrice } from '../../../lib/pricing';
+import { getFreshPrices, withFresh } from '../../../lib/prices';
 
-const find = (id) => {
+const find = async (id) => {
   const p = data.products.find((x) => x.id === id);
-  return p && { ...p, price: retailPrice(p.price) };
+  return p && withFresh(p, await getFreshPrices(), retailPrice);
 };
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
-  const p = find(id);
+  const p = await find(id);
   if (!p) return { title: 'Товар не знайдено — Форпост' };
   return {
     title: `${p.title} — Форпост`,
     description: `${p.title}. ${p.price} ₴. Оплата карткою, доставка Новою Поштою.`,
-    openGraph: { images: [p.image] },
+    alternates: { canonical: `/p/${p.id}` },
+    openGraph: { images: [p.image], title: p.title, type: 'website' },
   };
 }
 
 export default async function Page({ params }) {
   const { id } = await params;
-  const p = find(id);
+  const p = await find(id);
   if (!p) notFound();
   const details = await getProductDetails(p.id);
   const reviews = await getApprovedReviews(p.id);
@@ -37,6 +39,28 @@ export default async function Page({ params }) {
 
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: p.title,
+            image: images,
+            description: (details?.description || p.title).slice(0, 500),
+            sku: String(p.sku || p.id),
+            offers: {
+              '@type': 'Offer',
+              url: `/p/${p.id}`,
+              priceCurrency: 'UAH',
+              price: String(p.price),
+              itemCondition: 'https://schema.org/NewCondition',
+              availability: p.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+            },
+            ...(reviews.length ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: avg.toFixed(1), reviewCount: reviews.length } } : {}),
+          }),
+        }}
+      />
       <nav className="crumbs" aria-label="Навігація">
         <a href="/">Каталог</a><span>/</span>
         <span>{group}</span><span>/</span>
@@ -86,10 +110,6 @@ export default async function Page({ params }) {
                   {r.text && <p style={{ margin: '6px 0 0', whiteSpace: 'pre-line' }}>{r.text}</p>}
                 </div>
               ))}
-              <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-                '@context': 'https://schema.org', '@type': 'Product', name: p.title, image: images,
-                aggregateRating: { '@type': 'AggregateRating', ratingValue: avg.toFixed(1), reviewCount: reviews.length },
-              }) }} />
             </section>
           )}
 

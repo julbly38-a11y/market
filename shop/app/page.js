@@ -2,10 +2,13 @@ import data from '../data/products.json';
 import Catalog from './Catalog';
 import { groupOf } from '../lib/groups';
 import { retailPrice } from '../lib/pricing';
+import { getFreshPrices, withFresh } from '../lib/prices';
 
-const products = data.products.map((p) => ({ ...p, price: retailPrice(p.price), group: groupOf(p) }));
+export const revalidate = 900; // ціни й залишки оновлюються щодоби, кеш 15 хв
 
-export default function Page() {
+export default async function Page() {
+  const fresh = await getFreshPrices();
+  const products = data.products.map((p) => ({ ...withFresh(p, fresh, retailPrice), group: groupOf(p) }));
   return (
     <main>
       <section className="hero">

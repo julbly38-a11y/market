@@ -13,6 +13,8 @@ export default function Catalog({ products, vendors }) {
   const [category, setCategory] = useState('all');
   const [inStock, setInStock] = useState(true);
   const [sort, setSort] = useState('category');
+  const [minP, setMinP] = useState('');
+  const [maxP, setMaxP] = useState('');
   const [limit, setLimit] = useState(PAGE);
 
   const categories = useMemo(() => {
@@ -35,6 +37,8 @@ export default function Catalog({ products, vendors }) {
           (group === 'all' || p.group === group) &&
           (category === 'all' || p.category.trim() === category) &&
           (!inStock || p.stock > 0) &&
+          (!minP || p.price >= Number(minP)) &&
+          (!maxP || p.price <= Number(maxP)) &&
           (!needle || p.title.toLowerCase().includes(needle) || String(p.sku).toLowerCase().includes(needle))
       )
       .sort((a, b) => {
@@ -47,7 +51,7 @@ export default function Catalog({ products, vendors }) {
           a.title.localeCompare(b.title, 'uk')
         );
       });
-  }, [products, q, vendor, group, category, inStock, sort]);
+  }, [products, q, vendor, group, category, inStock, sort, minP, maxP]);
 
   const reset = (fn) => (e) => {
     fn(e.target.type === 'checkbox' ? e.target.checked : e.target.value);
@@ -87,6 +91,10 @@ export default function Catalog({ products, vendors }) {
           <option value="price_asc">Ціна: від дешевих</option>
           <option value="price_desc">Ціна: від дорогих</option>
         </select>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input type="number" min="0" inputMode="numeric" placeholder="Ціна від" value={minP} onChange={reset(setMinP)} aria-label="Ціна від" style={{ width: '100%', height: 44, padding: '0 12px', border: '1px solid var(--line-strong)', borderRadius: 'var(--radius-sm)', font: 'inherit' }} />
+          <input type="number" min="0" inputMode="numeric" placeholder="до" value={maxP} onChange={reset(setMaxP)} aria-label="Ціна до" style={{ width: '100%', height: 44, padding: '0 12px', border: '1px solid var(--line-strong)', borderRadius: 'var(--radius-sm)', font: 'inherit' }} />
+        </div>
         <label className="check">
           <input type="checkbox" checked={inStock} onChange={reset(setInStock)} /> Лише в наявності
         </label>

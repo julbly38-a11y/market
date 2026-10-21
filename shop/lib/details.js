@@ -14,13 +14,20 @@ export async function getProductDetails(id, { fresh = false } = {}) {
   }
 }
 
+const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', laquo: '«', raquo: '»', hellip: '…', deg: '°', times: '×', copy: '©' };
+const decode = (s) =>
+  s
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENT[n.toLowerCase()] ?? m);
+
 export const cleanDescription = (s) =>
-  String(s || '')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
+  decode(decode(
+    String(s || '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+  ))
     .replace(/\n{3,}/g, '\n\n')
     .trim()
     .slice(0, 4000);
