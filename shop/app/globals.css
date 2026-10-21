@@ -288,3 +288,4 @@ main { max-width: 1240px; margin: 0 auto; padding: 28px 20px 72px; }
 .set-card-title { font-weight: 600; }
 .set-card-meta { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .set-card-price { margin-top: 6px; } .set-card-price s { color: var(--faint); margin-right: 6px; } .set-card-price b { font-size: 1.15rem; }
+.sets-all { float: right; font-size: .74rem; letter-spacing: .1em; color: var(--muted); text-decoration: none; font-weight: 500; } .sets-all:hover { color: var(--ink); }

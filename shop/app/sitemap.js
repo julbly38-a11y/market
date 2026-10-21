@@ -10,7 +10,7 @@ export const revalidate = 3600;
 export default async function sitemap() {
   const fresh = await getFreshPrices();
   const now = new Date();
-  const pages = ['', '/povernennya', '/oferta', '/konfidentsiynist'].map((p) => ({ url: `${SITE}${p}`, lastModified: now }));
+  const pages = ['', '/nabory', '/povernennya', '/oferta', '/konfidentsiynist'].map((p) => ({ url: `${SITE}${p}`, lastModified: now }));
   const products = data.products
     .filter((p) => (fresh.get(p.id)?.stock ?? p.stock) > 0)
     .map((p) => ({ url: `${SITE}/p/${p.id}`, lastModified: now }));
