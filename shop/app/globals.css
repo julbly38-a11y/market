@@ -216,7 +216,6 @@ main { max-width: 1240px; margin: 0 auto; padding: 28px 20px 72px; }
   .modal { padding: 20px; }
   .p-price { font-size: 1.8rem; }
 }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 /* чорне поле: фото категорій на 86% висоти поля (по центру), відступ ~5 мм (19px) від країв поля */
 .hero-dark { padding: 19px; }
@@ -227,18 +226,18 @@ main { max-width: 1240px; margin: 0 auto; padding: 28px 20px 72px; }
 .hero-ctrl .hero-back { width: auto; padding: 0 14px; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; }
 .hero-scroll { display: flex; align-items: stretch; gap: 14px; width: 100%; height: 86%; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
 .hero-scroll::-webkit-scrollbar { display: none; }
-.cat-group { flex: none; display: flex; align-items: stretch; height: 100%; scroll-snap-align: start; overflow: hidden; max-width: 700px; transition: max-width .3s ease, opacity .2s ease; }
+.cat-group { flex: none; display: flex; align-items: stretch; height: 100%; scroll-snap-align: start; overflow: hidden; max-width: 700px; transition: max-width .8s cubic-bezier(.22, 1, .36, 1) .12s, opacity .4s ease, margin .8s cubic-bezier(.22, 1, .36, 1) .12s; }
 .cat-card { cursor: pointer; position: relative; display: block; flex: 0 0 clamp(207px, 25.9vw, 397px); height: 100%; background: #1b1b1c; overflow: hidden; color: #fff; text-decoration: none; }
-.cat-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .5s ease; }
+.cat-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .9s cubic-bezier(.22, 1, .36, 1); }
 .cat-card:hover img { transform: scale(1.04); }
 .cat-info { position: absolute; left: 0; right: 0; bottom: 0; padding: 56px 20px 18px; background: linear-gradient(180deg, transparent, rgba(0,0,0,.78)); display: flex; flex-direction: column; gap: 4px; }
 .cat-name { font-size: .9rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; line-height: 1.3; }
 .cat-count { font-size: .78rem; color: var(--lime); letter-spacing: .08em; }
 .cat-card:hover .cat-name { color: var(--lime); }
-.cat-group.gone { max-width: 0; opacity: 0; margin-right: -14px; pointer-events: none; }
+.cat-group.gone { max-width: 0; opacity: 0; margin-right: -14px; pointer-events: none; transition: opacity .35s ease, max-width .8s cubic-bezier(.22, 1, .36, 1) .2s, margin .8s cubic-bezier(.22, 1, .36, 1) .2s; }
 .cat-group.open { flex: 1 1 auto; min-width: 0; max-width: none; gap: 14px; }
 .cat-group.open .cat-card:not(.sub) { outline: 2px solid var(--lime); outline-offset: -2px; }
-.sub-scroll { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-flow: column dense; grid-auto-columns: clamp(103.5px, 12.95vw, 198.5px); align-items: stretch; gap: 14px; flex: 1; min-width: 0; height: 100%; overflow-x: auto; scrollbar-width: none; animation: subIn .28s ease both; }
+.sub-scroll { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-flow: column dense; grid-auto-columns: clamp(103.5px, 12.95vw, 198.5px); align-items: stretch; gap: 14px; flex: 1; min-width: 0; height: 100%; overflow-x: auto; scrollbar-width: none; }
 .sub-scroll::-webkit-scrollbar { display: none; }
 .cat-card.sub { flex: none; height: 100%; width: auto; }
 .cat-card.sub .cat-info { padding: 28px 10px 10px; }
@@ -248,10 +247,19 @@ main { max-width: 1240px; margin: 0 auto; padding: 28px 20px 72px; }
 .more-card .cat-name { font-size: .68rem; }
 .more-card .more-arrow { font-size: 1.5rem; color: var(--lime); }
 .more-card:hover { border-color: var(--lime); }
-@keyframes subIn { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+.sub-scroll .cat-card.sub { animation: subIn .8s cubic-bezier(.22, 1, .36, 1) both; animation-delay: calc(var(--i, 0) * 70ms + 260ms); }
+.sub-scroll.out .cat-card.sub { animation: subOut .5s cubic-bezier(.4, 0, 1, 1) both; animation-delay: calc(var(--i, 0) * 25ms); }
+@keyframes subIn { from { opacity: 0; transform: translateX(46px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes subOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(24px) scale(.97); } }
 @media (max-width: 560px) { .hero-field { height: clamp(380px, 62vh, 520px); } .cat-card { flex-basis: 62.4vw; } .cat-card.sub { flex-basis: auto; }
   .sub-scroll { grid-auto-columns: 31.2vw; } .cat-info { padding: 40px 14px 14px; } }
-@media (prefers-reduced-motion: reduce) { .cat-group, .sub-scroll { transition: none; animation: none; } }
+@keyframes subInFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes subOutFade { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .sub-scroll .cat-card.sub { animation-name: subInFade; }
+  .sub-scroll.out .cat-card.sub { animation-name: subOutFade; }
+  .cat-card img, .cat-card:hover img { transition: none; transform: none; }
+}
 
 /* набори */
 .set-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 40px; align-items: start; margin-top: 22px; }
