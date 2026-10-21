@@ -38,9 +38,7 @@ export default async function Page() {
   return (
     <>
       <section className="hero-dark">
-        <div className="wrap hero-in">
-          <HeroCategories items={categories} />
-        </div>
+        <HeroCategories items={categories} />
       </section>
 
       <main>
