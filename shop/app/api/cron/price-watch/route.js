@@ -7,9 +7,10 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 export async function GET(req) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return Response.json({ error: 'cron_disabled' }, { status: 503 });
-  if (req.headers.get('authorization') !== `Bearer ${secret}`) return Response.json({ error: 'forbidden' }, { status: 403 });
+  // CRON_SECRET — для cron Vercel, PRICE_WATCH_SECRET — для розкладу в Supabase (pg_cron).
+  const secrets = [process.env.CRON_SECRET, process.env.PRICE_WATCH_SECRET].filter(Boolean);
+  if (!secrets.length) return Response.json({ error: 'cron_disabled' }, { status: 503 });
+  if (!secrets.some((s) => req.headers.get('authorization') === `Bearer ${s}`)) return Response.json({ error: 'forbidden' }, { status: 403 });
   try {
     return Response.json(await runPriceWatch());
   } catch (err) {
