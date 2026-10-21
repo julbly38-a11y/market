@@ -5,6 +5,7 @@
 // Чернетка MyDrop створюється лише після підтвердженої оплати (див. /api/mono-webhook).
 
 import { retailPrice } from '../../../lib/pricing';
+import { getBranches } from '../../../lib/np';
 import { PRODUCTS, SITE, getLiveSupplierPrice, orderUrl, sbInsertOrder, sbPatchOrder } from '../../../lib/orders';
 
 const bad = (error, status = 400) => Response.json({ ok: false, error }, { status });
@@ -44,6 +45,17 @@ export async function POST(req) {
   if (!/^\+?\d{10,13}$/.test(phone)) return bad('bad_phone');
   if (city.length < 2 || city.length > 120) return bad('bad_city');
   if (!/^\d{1,5}$/.test(warehouse)) return bad('bad_warehouse');
+
+  // Місто й відділення вибираються зі списку НП: звіряємо, що такий номер справді є в місті.
+  const cityRef = String(b.cityRef || '');
+  if (/^[0-9a-f-]{36}$/i.test(cityRef)) {
+    try {
+      const branches = await getBranches(cityRef);
+      if (!branches.some((w) => w.number === warehouse)) return bad('bad_warehouse');
+    } catch (err) {
+      console.error('np check failed, пропускаємо перевірку', err);
+    }
+  }
 
   const total = product.price * qty;
 

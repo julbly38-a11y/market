@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export const money = new Intl.NumberFormat('uk-UA');
 
 const ERR = {
   bad_name: 'Вкажіть ПІБ повністю',
   bad_phone: 'Невірний номер телефону',
-  bad_city: 'Вкажіть місто',
-  bad_warehouse: 'Номер відділення Нової пошти — лише цифри',
+  bad_city: 'Виберіть місто зі списку',
+  bad_warehouse: 'Виберіть відділення Нової пошти зі списку',
   bad_qty: 'Невірна кількість',
   unknown_product: 'Товар не знайдено',
   price_unavailable: 'Не вдалося уточнити ціну в постачальника, спробуйте ще раз за хвилину',
@@ -18,20 +18,64 @@ const ERR = {
 
 // Форма замовлення: у модальному вікні (швидке замовлення з каталогу) або вбудована на сторінці товару.
 export function OrderForm({ product, inline = false, onClose }) {
-  const [f, setF] = useState({ name: '', phone: '+380', city: '', warehouse: '', qty: 1, note: '', website: '' });
+  const [f, setF] = useState({ name: '', phone: '+380', city: '', warehouse: '', warehouseText: '', qty: 1, note: '', website: '' });
   const [state, setState] = useState({ busy: false, error: '' });
+  const [cities, setCities] = useState([]); // підказки міст
+  const [cityRef, setCityRef] = useState('');
+  const [branches, setBranches] = useState([]);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const max = Math.max(product.stock, 1);
   const step = (d) => setF((x) => ({ ...x, qty: Math.min(max, Math.max(1, Number(x.qty) + d)) }));
 
+  // Міста: підказки з довідника НП. Коли введений текст збігається з варіантом — фіксуємо місто.
+  useEffect(() => {
+    const q = f.city.trim();
+    const hit = cities.find((c) => c.present === q);
+    if (hit) {
+      if (hit.ref !== cityRef) setCityRef(hit.ref);
+      return;
+    }
+    if (cityRef) setCityRef('');
+    if (q.length < 2) return setCities([]);
+    const t = setTimeout(() => {
+      fetch(`/api/np/cities?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((j) => setCities(j.cities || []))
+        .catch(() => setCities([]));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [f.city]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Відділення вибраного міста.
+  useEffect(() => {
+    setBranches([]);
+    setF((x) => ({ ...x, warehouse: '', warehouseText: '' }));
+    if (!cityRef) return;
+    let off = false;
+    fetch(`/api/np/warehouses?city=${cityRef}`)
+      .then((r) => r.json())
+      .then((j) => !off && setBranches(j.warehouses || []))
+      .catch(() => {});
+    return () => { off = true; };
+  }, [cityRef]);
+
+  const pickWarehouse = (e) => {
+    const text = e.target.value;
+    const hit = branches.find((w) => w.name === text);
+    setF((x) => ({ ...x, warehouseText: text, warehouse: hit ? hit.number : '' }));
+  };
+
   async function submit(e) {
     e.preventDefault();
+    const city = cities.find((c) => c.ref === cityRef);
+    if (!city) return setState({ busy: false, error: ERR.bad_city });
+    if (!f.warehouse) return setState({ busy: false, error: ERR.bad_warehouse });
     setState({ busy: true, error: '' });
     try {
       const res = await fetch('/api/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...f, qty: Number(f.qty), productId: product.id }),
+        body: JSON.stringify({ ...f, city: city.name, cityRef, qty: Number(f.qty), productId: product.id }),
       });
       const json = await res.json();
       if (!json.ok || !json.paymentUrl) throw new Error(ERR[json.error] || 'Помилка, спробуйте ще раз');
@@ -62,15 +106,19 @@ export function OrderForm({ product, inline = false, onClose }) {
         <label htmlFor={`p-${product.id}`}>Телефон</label>
         <input id={`p-${product.id}`} required autoComplete="tel" inputMode="tel" value={f.phone} onChange={set('phone')} />
       </div>
-      <div className="two">
-        <div className="field">
-          <label htmlFor={`c-${product.id}`}>Місто</label>
-          <input id={`c-${product.id}`} required autoComplete="address-level2" value={f.city} onChange={set('city')} />
-        </div>
-        <div className="field">
-          <label htmlFor={`w-${product.id}`}>Відділення НП №</label>
-          <input id={`w-${product.id}`} required inputMode="numeric" value={f.warehouse} onChange={set('warehouse')} />
-        </div>
+      <div className="field">
+        <label htmlFor={`c-${product.id}`}>Місто</label>
+        <input id={`c-${product.id}`} required autoComplete="off" list={`cl-${product.id}`} placeholder="Почніть вводити і виберіть зі списку" value={f.city} onChange={set('city')} />
+        <datalist id={`cl-${product.id}`}>
+          {cities.map((c) => <option key={c.ref} value={c.present} />)}
+        </datalist>
+      </div>
+      <div className="field">
+        <label htmlFor={`w-${product.id}`}>Відділення Нової пошти</label>
+        <input id={`w-${product.id}`} required autoComplete="off" list={`wl-${product.id}`} disabled={!cityRef} placeholder={cityRef ? (branches.length ? 'Виберіть відділення зі списку' : 'Завантажуємо відділення…') : 'Спочатку виберіть місто'} value={f.warehouseText || ''} onChange={pickWarehouse} />
+        <datalist id={`wl-${product.id}`}>
+          {branches.map((w) => <option key={w.number} value={w.name} />)}
+        </datalist>
       </div>
       <div className="field">
         <label>Кількість</label>
