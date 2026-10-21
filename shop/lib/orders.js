@@ -27,7 +27,15 @@ function loadVendorPrices(vendorId) {
     const items = new Map();
     for (const p of json.products || []) {
       const stock = (p.sizes || []).reduce((sum, z) => sum + (z.real_count_dropshipper || 0), 0);
-      items.set(String(p.id), { price: p.price, stock });
+      items.set(String(p.id), {
+        price: p.price,
+        stock,
+        // повні дані для market.product_details (їх оновлює моніторинг цін)
+        description: p.description,
+        images: (p.images || []).map((i) => i.full_url).filter(Boolean),
+        sizes: (p.sizes || []).map((z) => ({ title: z.title, stock: z.real_count_dropshipper || 0 })),
+        sizeChart: p.size_chart_image?.full_url || (typeof p.size_chart_image === 'string' ? p.size_chart_image : null),
+      });
     }
     return items;
   })();

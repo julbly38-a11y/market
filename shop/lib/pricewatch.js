@@ -5,6 +5,7 @@
 import { retailPrice } from './pricing';
 import { PRODUCTS, getVendorPrices, sb } from './orders';
 import { sendMail } from './notify';
+import { detailsRow } from './details';
 import competitors from '../data/competitors.json';
 
 const SIGNIFICANT_PCT = Number(process.env.PRICE_ALERT_PERCENT || 5); // зміна закупівлі, про яку пишемо
@@ -45,6 +46,7 @@ async function watchSupplier(report) {
   const vendors = [...new Set([...PRODUCTS.keys()].map((id) => id.split('-')[0]))];
   const upserts = [];
   const changes = [];
+  const details = [];
 
   for (const vendorId of vendors) {
     let live;
@@ -53,6 +55,10 @@ async function watchSupplier(report) {
     } catch (err) {
       report.errors.push(`vendor ${vendorId}: ${err.message}`);
       continue;
+    }
+    // опис, фото, розміри всіх товарів постачальника, що мають ціну й фото
+    for (const [itemId, it] of live) {
+      if (it.price && it.images?.length) details.push(detailsRow(`${vendorId}-${itemId}`, it));
     }
     for (const [id, p] of PRODUCTS) {
       if (!id.startsWith(`${vendorId}-`)) continue;
@@ -71,6 +77,14 @@ async function watchSupplier(report) {
     }
   }
 
+  if (details.length) {
+    try {
+      await post('product_details?on_conflict=id', details, 'resolution=merge-duplicates,return=minimal');
+      report.details = details.length;
+    } catch (err) {
+      report.errors.push(`details: ${err.message}`);
+    }
+  }
   if (upserts.length) await post('supplier_prices?on_conflict=product_id', upserts, 'resolution=merge-duplicates');
   const priceMoves = changes.filter((c) => c.old_price !== c.new_price || (c.old_stock > 0) !== (c.new_stock > 0));
   if (priceMoves.length) await post('price_changes', priceMoves, 'return=minimal');
@@ -159,7 +173,7 @@ function buildMail(changes, cheaper, report) {
 }
 
 export async function runPriceWatch() {
-  const report = { checked: 0, stored: 0, changes: 0, competitors: 0, baseline: false, errors: [], mailed: false };
+  const report = { details: 0, checked: 0, stored: 0, changes: 0, competitors: 0, baseline: false, errors: [], mailed: false };
   const changes = await watchSupplier(report);
   const cheaper = await watchCompetitors(report);
   if (!report.baseline && (changes.length || cheaper.length || report.errors.length)) {
