@@ -11,4 +11,9 @@ if (!process.env.VERCEL) {
   } catch {}
 }
 
-export default {};
+export default {
+  // www → основний домен (один канонічний адрес для пошуку)
+  async redirects() {
+    return [{ source: '/:path*', has: [{ type: 'host', value: 'www.forpost-shop.com' }], destination: 'https://forpost-shop.com/:path*', permanent: true }];
+  },
+};

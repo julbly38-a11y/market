@@ -35,3 +35,14 @@ alter table market.reviews add column if not exists verified boolean not null de
 alter table market.reviews add column if not exists ip_hash text;
 update market.reviews set verified = true where order_id is not null;
 create index if not exists reviews_ip_recent on market.reviews (ip_hash, created_at desc);
+
+-- Розклад відгуків теж викликає основний домен.
+create or replace function market.run_review_requests()
+returns bigint language plpgsql security definer set search_path = '' as $$
+declare secret text; req_id bigint;
+begin
+  select decrypted_secret into secret from vault.decrypted_secrets where name = 'price_watch_secret';
+  select net.http_get(url := 'https://forpost-shop.com/api/cron/review-requests',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || secret), timeout_milliseconds := 120000) into req_id;
+  return req_id;
+end; $$;
