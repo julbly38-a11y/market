@@ -16,13 +16,13 @@ const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<'
 async function loadStored() {
   const map = new Map();
   for (let from = 0; ; from += 1000) {
-    const res = await fetch(url(`supplier_prices?select=product_id,price,stock&order=product_id&limit=1000&offset=${from}`), {
+    const res = await fetch(url(`supplier_prices?select=product_id,price,stock,title&order=product_id&limit=1000&offset=${from}`), {
       headers: sb(),
       cache: 'no-store',
     });
     const rows = await res.json();
     if (!Array.isArray(rows)) throw new Error(`supplier_prices_read_failed: ${JSON.stringify(rows).slice(0, 150)}`);
-    for (const r of rows) map.set(r.product_id, { price: Number(r.price), stock: r.stock });
+    for (const r of rows) map.set(r.product_id, { price: Number(r.price), stock: r.stock, hasTitle: !!r.title });
     if (rows.length < 1000) break;
   }
   return map;
@@ -60,9 +60,9 @@ async function watchSupplier(report) {
       if (!cur || !cur.price) continue;
       report.checked++;
       const prev = stored.get(id);
-      if (prev && prev.price === cur.price && prev.stock === cur.stock) continue;
-      upserts.push({ product_id: id, price: cur.price, stock: cur.stock, checked_at: new Date().toISOString() });
-      if (prev && !baseline) {
+      if (prev && prev.price === cur.price && prev.stock === cur.stock && prev.hasTitle) continue;
+      upserts.push({ product_id: id, title: p.title, price: cur.price, stock: cur.stock, checked_at: new Date().toISOString() });
+      if (prev && !baseline && (prev.price !== cur.price || prev.stock !== cur.stock)) {
         changes.push({
           product_id: id, title: p.title,
           old_price: prev.price, new_price: cur.price, old_stock: prev.stock, new_stock: cur.stock,

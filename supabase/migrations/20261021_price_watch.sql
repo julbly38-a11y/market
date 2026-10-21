@@ -36,3 +36,4 @@ alter table market.competitor_prices enable row level security;
 
 grant select, insert, update, delete on market.supplier_prices, market.price_changes, market.competitor_prices to service_role;
 grant usage, select on all sequences in schema market to service_role;
+alter table market.supplier_prices add column if not exists title text;
