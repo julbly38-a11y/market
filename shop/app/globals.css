@@ -218,17 +218,17 @@ main { max-width: 1240px; margin: 0 auto; padding: 28px 20px 72px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
-/* чорне поле: фото категорій на 90% висоти поля (по центру), відступ ~5 мм (19px) від країв поля */
+/* чорне поле: фото категорій на 86% висоти поля (по центру), відступ ~5 мм (19px) від країв поля */
 .hero-dark { padding: 19px; }
 .hero-field { position: relative; height: clamp(400px, 64vh, 640px); display: flex; align-items: center; }
 .hero-ctrl { position: absolute; top: 0; right: 0; z-index: 5; display: flex; gap: 8px; }
 .hero-ctrl button { width: 40px; height: 40px; border: 1px solid rgba(255,255,255,.6); background: rgba(0,0,0,.45); color: #fff; font-size: 1.1rem; cursor: pointer; backdrop-filter: blur(4px); transition: background .15s, color .15s; }
 .hero-ctrl button:hover { background: var(--lime); color: var(--black); border-color: var(--lime); }
 .hero-ctrl .hero-back { width: auto; padding: 0 14px; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; }
-.hero-scroll { display: flex; align-items: stretch; gap: 14px; width: 100%; height: 90%; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
+.hero-scroll { display: flex; align-items: stretch; gap: 14px; width: 100%; height: 86%; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
 .hero-scroll::-webkit-scrollbar { display: none; }
 .cat-group { flex: none; display: flex; align-items: stretch; height: 100%; scroll-snap-align: start; overflow: hidden; max-width: 700px; transition: max-width .3s ease, opacity .2s ease; }
-.cat-card { position: relative; display: block; flex: 0 0 clamp(216px, 27vw, 414px); height: 100%; background: #1b1b1c; overflow: hidden; color: #fff; text-decoration: none; }
+.cat-card { position: relative; display: block; flex: 0 0 clamp(207px, 25.9vw, 397px); height: 100%; background: #1b1b1c; overflow: hidden; color: #fff; text-decoration: none; }
 .cat-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .5s ease; }
 .cat-card:hover img { transform: scale(1.04); }
 .cat-info { position: absolute; left: 0; right: 0; bottom: 0; padding: 56px 20px 18px; background: linear-gradient(180deg, transparent, rgba(0,0,0,.78)); display: flex; flex-direction: column; gap: 4px; }
@@ -240,10 +240,10 @@ main { max-width: 1240px; margin: 0 auto; padding: 28px 20px 72px; }
 .cat-group.open .cat-card:not(.sub) { outline: 2px solid var(--lime); outline-offset: -2px; }
 .sub-scroll { display: flex; gap: 14px; flex: 1; min-width: 0; height: 100%; overflow-x: auto; scrollbar-width: none; animation: subIn .28s ease both; }
 .sub-scroll::-webkit-scrollbar { display: none; }
-.cat-card.sub { flex: 0 0 clamp(180px, 20vw, 306px); }
+.cat-card.sub { flex: 0 0 clamp(173px, 19.2vw, 294px); }
 .more-card { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 14px; border: 1px solid #3a3a38; background: transparent; padding: 24px; }
 .more-card .more-arrow { font-size: 2rem; color: var(--lime); }
 .more-card:hover { border-color: var(--lime); }
 @keyframes subIn { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
-@media (max-width: 560px) { .hero-field { height: clamp(380px, 62vh, 520px); } .cat-card { flex-basis: 65vw; } .cat-card.sub { flex-basis: 47vw; } .cat-info { padding: 40px 14px 14px; } }
+@media (max-width: 560px) { .hero-field { height: clamp(380px, 62vh, 520px); } .cat-card { flex-basis: 62.4vw; } .cat-card.sub { flex-basis: 45.1vw; } .cat-info { padding: 40px 14px 14px; } }
 @media (prefers-reduced-motion: reduce) { .cat-group, .sub-scroll { transition: none; animation: none; } }
