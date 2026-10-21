@@ -1,27 +1,7 @@
-import { getDetails } from '../../lib/mono';
+import { getSeller } from '../../lib/seller';
 
 export const metadata = { title: 'Публічна оферта — Форпост' };
 export const dynamic = 'force-dynamic';
-
-// ПІБ і РНОКПП беремо з monobank (дані мерчанта), env SELLER_* має пріоритет.
-// Адреса й email — лише з env. Результат кешуємо в памʼяті на годину.
-let cached = { at: 0, value: null };
-async function getSeller() {
-  if (!cached.value || Date.now() - cached.at > 3600_000) {
-    const d = await getDetails().catch((err) => {
-      console.error('oferta: mono details failed', err);
-      return null;
-    });
-    if (d) cached = { at: Date.now(), value: { name: d.merchantName, taxId: d.edrpou } };
-  }
-  const fromMono = cached.value || {};
-  return {
-    name: process.env.SELLER_NAME || fromMono.name,
-    taxId: process.env.SELLER_TAXID || fromMono.taxId,
-    address: process.env.SELLER_ADDRESS,
-    email: process.env.SELLER_EMAIL,
-  };
-}
 
 export default async function Page() {
   const seller = await getSeller();

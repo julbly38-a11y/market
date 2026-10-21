@@ -2,6 +2,8 @@
 // Потрібні RESEND_API_KEY і NOTIFY_EMAIL; без них нічого не робить. Помилка сповіщення не ламає вебхук.
 // NOTIFY_FROM — відправник (за замовчуванням тестовий onboarding@resend.dev; для свого домену треба верифікація в Resend).
 
+import { orderUrl } from './orders';
+
 const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 
 export async function notifyPaidOrder(order, mydrop) {
@@ -12,7 +14,8 @@ export async function notifyPaidOrder(order, mydrop) {
   const html = `<h3>Оплачене замовлення №${esc(order.id)}</h3>
 <p>${esc(order.product_name)} (арт. ${esc(order.sku)}) × ${esc(order.qty)} = <b>${esc(order.total)} ₴</b></p>
 <p>${esc(order.customer_name)}, ${esc(order.phone)}<br>${esc(order.city)}</p>
-<p>${esc(draft)}. Подайте її постачальнику в кабінеті MyDrop.</p>`;
+<p>${esc(draft)}. Подайте її постачальнику в кабінеті MyDrop.</p>
+<p>Сторінка статусу для покупця: <a href="${esc(orderUrl(order.id))}">${esc(orderUrl(order.id))}</a></p>`;
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',

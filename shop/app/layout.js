@@ -38,6 +38,7 @@ export default function RootLayout({ children }) {
                 <h4>Покупцям</h4>
                 <a href="/povernennya">Доставка і повернення</a>
                 <a href="/oferta">Публічна оферта</a>
+                <a href="/konfidentsiynist">Політика конфіденційності</a>
               </div>
               <div>
                 <h4>Оплата</h4>
