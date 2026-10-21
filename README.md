@@ -1,105 +1,102 @@
-# market
+# Форпост — інтернет-магазин на дропшипінгу
 
-Дропшипінг без складу: моніторинг цін, власна вітрина «Форпост» і зв'язок замовлень із постачальником (MyDrop) та Prom.ua.
+Магазин без складу: каталог постачальників MyDrop, власна вітрина на Next.js, оплата карткою (monobank) або накладеним платежем, замовлення передаються постачальнику через MyDrop.
 
-Що в репо:
+Сайт: https://forpost-shop.com
 
-| Частина | Файли |
+## Стек
+
+| Частина | Що використовуємо |
 |---|---|
-| Моніторинг цін (Prom.ua, Rozetka) | `monitor.js`, `watchlist.json`, `price-history.json` |
-| Вітрина «Форпост» | `web/index.html`, `web/catalog.json`, `web/api/order.js`, `web/api/feed.js`, `dev-server.js` |
-| Клієнт MyDrop | `mydrop.js`, `test-mydrop.js` |
-| Замовлення з Prom.ua → MyDrop | `prom-orders.js` |
+| Вітрина й API | Next.js 16 (App Router), React 19, папка [`shop/`](shop/) |
+| Хостинг | Vercel (проєкт `forpost-shop`, домен `forpost-shop.com`) |
+| База даних | Supabase (Postgres), схема `market` |
+| Постачальник | MyDrop (каталог, ціни, залишки, чернетки замовлень) |
+| Оплата | monobank mono pay (еквайринг), накладений платіж Нової Пошти |
+| Довідник доставки | API Нової Пошти (міста й відділення) |
+| Листи | Resend (відправник `noreply@forpost-shop.com`) |
+| Розклад | Supabase `pg_cron` + `pg_net` |
 
-## Моніторинг цін
+> Це не звична версія Next.js: перед правками читайте [`shop/AGENTS.md`](shop/AGENTS.md) і документацію в `shop/node_modules/next/dist/docs/`.
 
-Витягує ціну/наявність/продавця/рейтинг зі сторінок товарів через їхню публічну JSON-LD розмітку (schema.org `Product`), без API-ключів і логіну.
+## Як це працює
 
-## Як користуватись
+1. **Каталог.** Базовий знімок товарів лежить у `shop/data/products.json` (скрипт `npm run sync`). Свіжі ціни й залишки вітрина бере з `market.supplier_prices`, повні описи, фото й розміри з `market.product_details`.
+2. **Ціна.** Ціна на сайті = закупівельна ціна постачальника + націнка (`SITE_MARKUP_PERCENT`). Формула беззбитковості з урахуванням податку й комісії: `lib/pricing.js`.
+3. **Замовлення** (`/api/order`):
+   - перевіряє товар, жива ціна й залишок у MyDrop, розмір, місто й відділення НП;
+   - **картка:** створює рахунок mono, покупця перекидає на оплату; після оплати вебхук (`/api/mono-webhook`, перевірка підпису X-Sign) створює чернетку в MyDrop і надсилає лист власнику;
+   - **накладений платіж** (до `COD_MAX_AMOUNT`, за замовчуванням 3000 ₴): одразу створює чернетку й лист власнику «підтвердити по телефону».
+4. **Чернетка MyDrop** не подається постачальнику автоматично: власник подає її в кабінеті. У чернетці вказано спосіб оплати (оплачено карткою або накладений платіж).
+5. **Статус замовлення** для покупця: `/order/<id>-<токен>` (токен HMAC, чужі замовлення не перебрати).
+6. **Відгуки:** відкрита форма на сторінці товару й персональне посилання `/review/<токен>`. Усі відгуки проходять модерацію (`market.reviews.approved = true`), блок на сайті показується лише коли є схвалені відгуки.
+7. **Моніторинг цін** (щодоби 05:30 UTC, `/api/cron/price-watch`): оновлює закупівельні ціни, залишки, описи й розміри, пише зміни в `market.price_changes`, листом повідомляє про зміни від 5% і товари, що зникли.
+8. **Запити відгуків** (щодоби 07:00 UTC, `/api/cron/review-requests`): SMS і/або лист покупцям через 10 днів після оплати, коли налаштовані канали.
+9. **Фінанси:** `GET /api/finance?days=30` із заголовком `X-Finance-Key`: по кожному платежу комісія, податок, закупівля, прибуток.
+10. **SEO:** `sitemap.xml`, `robots.txt`, canonical, мікророзмітка `Product`, фід Google Merchant `/feed/google.xml`.
 
-```bash
-npm run monitor
-# або
-node monitor.js --watchlist
+## Структура
+
+```
+shop/
+  app/                 сторінки й API (Next App Router)
+    p/[id]/            сторінка товару (галерея, розміри, відгуки, форма)
+    order/[ref]/       статус замовлення
+    review/[ref]/      форма відгуку за посиланням
+    oferta, povernennya, konfidentsiynist/   юридичні сторінки
+    api/               order, mono-webhook, np, review, finance, cron/*
+    feed/google.xml/   фід для Google Merchant
+  lib/                 pricing, orders, mono, np, notify, sms, pricewatch, details, prices, seller, site
+  scripts/             sync-catalog, sync-details, push-supabase
+  data/                products.json (знімок каталогу), competitors.json
+supabase/migrations/   SQL-схема й розклади
 ```
 
-Товари для стеження — у [watchlist.json](watchlist.json) (масив `{ "label", "url" }`). Результати друкуються в консоль і дописуються в [price-history.json](price-history.json) з таймстемпом — так накопичується історія цін і видно зміни між замірами.
-
-Разові перевірки без watchlist:
-
-```bash
-node monitor.js <url1> <url2> ...
-node monitor.js --file urls.txt
-```
-
-## Що перевірено і працює
-
-- **Prom.ua** — працює повністю (ціна, наявність, продавець, рейтинг/відгуки)
-- **Rozetka.com.ua** — блокує прості HTTP-запити (403), потрібен ручний перегляд через браузер; сюди автоматизацію свідомо не тягнемо (їхній `robots.txt` явно забороняє ботів)
-
-## Важливо
-
-- Не використовувати для товарів, які видають себе за чужий бренд за ціною, що на порядок нижча за оригінал (типова ознака контрафакту) — на Prom.ua це трапляється часто, особливо під запитами "Apple", "AirPods", "Samsung" тощо
-- Затримка 800мс між запитами — не наростити навантаження на чужий сервер
-
-## Supabase (опційно)
-
-Якщо в `.env` (скопіювати з `.env.example`) є `SUPABASE_URL` і `SUPABASE_SERVICE_KEY`, кожен замір додатково пишеться в схему `market` (таблиці `products`, `price_snapshots`). Без `.env` скрипт працює як раніше — тільки `price-history.json`.
-
-Перед першим запуском із Supabase:
-
-1. Supabase Dashboard → проєкт **LSMD** → Settings → API → Data API Settings → Exposed schemas → додати `market` → Save (без цього кроку PostgREST відповідає `PGRST106 Invalid schema: market`)
-2. Скопіювати **service_role** ключ (не anon/publishable!) із Settings → API в `.env` як `SUPABASE_SERVICE_KEY`
-3. `.env` вже в `.gitignore` — ніколи не комітити
-
-## MyDrop — дропшипінг без складу
-
-[MyDrop](https://mydrop.com.ua/) — українська дропшип-CRM з реальним API для ролі "дропшипер": каталог постачальників з гуртовими (не роздрібними) цінами + створення й подача замовлення постачальнику програмно, без ручного чекауту чи бота.
-
-Клієнт — [mydrop.js](mydrop.js), тестовий прогін — [test-mydrop.js](test-mydrop.js) (`npm run test:mydrop`). Без `MYDROP_API_KEY` в `.env` скрипт просто друкує структуру запитів на мок-даних (dry-run); з ключем — реально тягне підключених постачальників і їхній каталог.
-
-## Вітрина «Форпост»
-
-Статичний сайт із каталогом і формою замовлення, `web/` — окремий проєкт для Vercel (своя `web/vercel.json`).
-
-- [web/index.html](web/index.html) — сторінка «Форпост — товари напряму зі складу».
-- [web/catalog.json](web/catalog.json) — каталог для фіду й `prom-orders.js` (сам `index.html` має свою вбудовану копію): 2 категорії («Одяг та взуття» — постачальник BEZET, 4 товари; «Автономна енергія та побут» — Товарний Синдикат, 6 товарів); у кожного товару `sku`, назва, ціна, залишок, фото з MyDrop.
-- [web/api/order.js](web/api/order.js) — приймає замовлення з форми: зберігає в Supabase (`market.orders`) і створює **чернетку** замовлення в MyDrop (`submitted: false`, постачальник її ще не бачить — власник подає вручну з кабінету MyDrop).
-- [web/api/feed.js](web/api/feed.js) — YML-фід каталогу для імпорту в Prom.ua за посиланням (`SITE_URL` — адреса сайту, за замовчуванням заглушка `https://forpost.example`).
-
-Локальний перегляд:
-
-```bash
-node dev-server.js    # http://localhost:3000, віддає web/ і виконує web/api/* як Vercel
-```
-
-## Замовлення з Prom.ua → MyDrop
-
-[prom-orders.js](prom-orders.js) бере замовлення з Prom.ua, знаходить за `sku` постачальника в `web/catalog.json`, створює чернетку в MyDrop і ставить у Prom статус «Прийнято».
-
-```bash
-node prom-orders.js            # перегляд: що було б зроблено, нічого не змінює
-node prom-orders.js --apply    # створює чернетки в MyDrop і ставить статус у Prom
-```
-
-Оброблені замовлення запам'ятовуються в `prom-orders-state.json` (у `.gitignore`), щоб не дублювати. Потрібен `PROM_API_TOKEN` у `.env`.
+Старі інструменти (не частина сайту): `monitor.js` (моніторинг цін конкурентів), `mydrop.js`, `prom-orders.js`, `web/`, `dev-server.js`. Інтеграцію Prom.ua прибрано.
 
 ## Змінні середовища
 
-Назви беруться з коду; значення живуть лише в `.env` / `.env.local` (обидва не комітити).
+Зразок у [`.env.example`](.env.example). Локально ключі лежать у кореневому `.env` (його читає `shop/next.config.mjs`, на Vercel не читається). **`.env` у git не потрапляє.**
 
-| Змінна | Для чого |
+| Змінна | Призначення |
 |---|---|
-| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | запис замовлень і заміри цін |
-| `MYDROP_API_KEY` | клієнт MyDrop |
-| `PROM_API_TOKEN` | `prom-orders.js` |
-| `SITE_URL` | адреса сайту для YML-фіду |
-| `PORT` | порт `dev-server.js` (за замовчуванням 3000) |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | база даних (service key лише на сервері) |
+| `MYDROP_API_KEY` | API MyDrop |
+| `MONO_TOKEN`, `MONO_PERSONAL_TOKEN` | еквайринг і виписка monobank |
+| `SITE_URL`, `PUBLIC_SITE_URL` | адреса сайту (оплата/посилання) і адреса для SEO |
+| `FINANCE_KEY` | доступ до `/api/finance` |
+| `CRON_SECRET`, `PRICE_WATCH_SECRET` | авторизація cron-запитів і HMAC-токенів посилань |
+| `SITE_MARKUP_PERCENT`, `TAX_PERCENT`, `MONO_FEE_PERCENT` | націнка, податок, комісія |
+| `COD_MAX_AMOUNT` | ліміт накладеного платежу |
+| `SELLER_NAME`, `SELLER_TAXID`, `SELLER_ADDRESS`, `SELLER_EMAIL` | дані ФОП для оферти (імʼя й РНОКПП за замовчуванням з mono) |
+| `RESEND_API_KEY`, `NOTIFY_EMAIL`, `NOTIFY_FROM` | листи власнику й покупцям |
+| `TURBOSMS_TOKEN`, `TURBOSMS_SENDER`, `REVIEW_REQUEST_DAYS` | SMS і строк запиту відгуку |
 
-У `.env.example` поки є лише Supabase і MyDrop; `PROM_API_TOKEN` і `SITE_URL` варто додати.
+## Локальний запуск
 
-## Що не перевірено
+```bash
+cd shop
+npm install
+npm run dev        # http://localhost:3020
+```
 
-- Чи зареєстрований акаунт дропшипера, чи підключений постачальник і чи є справжній `MYDROP_API_KEY` — залежить від вашого `.env`, у README не фіксується.
-- Для Supabase вище названо проєкт **LSMD**; поточна база в роботі — `nobodyjul`. Перевірте, в якому проєкті справді створена схема `market`.
-- Каталог у `web/index.html` зашитий прямо в код (`const CATALOG = [...]`), а не читається з `web/catalog.json`. `catalog.json` використовують `web/api/feed.js` і `prom-orders.js`, тож дві копії каталогу можуть розійтися — при зміні товарів правте обидві. Автоматичного оновлення цін/залишків із MyDrop у каталог поки немає.
+Команди: `npm run build`, `npm run start`, `npm run sync` (оновити знімок каталогу), `node --env-file=../.env scripts/sync-details.mjs` (описи, фото, розміри).
+
+## Деплой
+
+```bash
+vercel --prod
+```
+
+Змінні задаються в Vercel → Settings → Environment Variables. Після зміни змінної потрібен новий деплой.
+
+## База даних
+
+SQL-міграції лежать у [`supabase/migrations/`](supabase/migrations/). Схема `market`: `orders`, `reviews`, `supplier_prices`, `price_changes`, `product_details`, `competitor_prices`, а також `products` і `price_snapshots` (старий моніторинг). Розклад `price-watch-daily` і `review-requests-daily` налаштований через `pg_cron`, секрет викликів лежить у Supabase Vault (`price_watch_secret`).
+
+## Важливо знати
+
+- Оплачені карткою замовлення в чернетці MyDrop мають позначку «ОПЛАЧЕНО, накладений платіж не стягувати». Платіжні поля (передоплата, накладений платіж) задаються при подачі замовлення постачальнику, тобто вручну.
+- Єдиний податок 3 групи (5%) рахується від усієї виручки на рахунок, тому беззбиткова націнка 6,7%.
+- Розсилка відгуків і листи покупцям потребують налаштованих каналів (SMS або лист з верифікованого домену).
+- Тестові замовлення №1–13 лишились у базі; їх можна видалити SQL-запитами.
