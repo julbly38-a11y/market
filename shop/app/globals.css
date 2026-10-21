@@ -248,3 +248,22 @@ main { max-width: 1240px; margin: 0 auto; padding: 28px 20px 72px; }
 .mega-arrow:hover { background: var(--lime); }
 .mega-arrow.left { left: -10px; }
 .mega-arrow.right { right: -10px; }
+
+/* наведення на категорію: решта зникає, праворуч від вибраної зʼявляються підкатегорії */
+.hero-scroll { align-items: flex-start; }
+.cat-group { flex: none; display: flex; align-items: flex-start; margin-right: 14px; max-width: 300px; overflow: hidden; transition: max-width .3s ease, opacity .2s ease, margin .3s ease; }
+.cat-group .cat-card:not(.sub) { flex: 0 0 200px; }
+.cat-group.gone { max-width: 0; opacity: 0; margin-right: 0; pointer-events: none; }
+.cat-group.open { flex: 1 1 auto; min-width: 0; max-width: none; overflow: visible; }
+.cat-group.open .cat-card:not(.sub) .cat-img { outline: 2px solid var(--lime); outline-offset: -2px; }
+.cat-group.open .cat-card:not(.sub) .cat-name { color: var(--lime); }
+.sub-scroll { display: flex; gap: 12px; flex: 1; min-width: 0; overflow-x: auto; padding-left: 20px; margin-left: 16px; border-left: 1px solid #3a3a38; scrollbar-width: none; animation: subIn .28s ease both; }
+.sub-scroll::-webkit-scrollbar { display: none; }
+.cat-card.sub { flex: 0 0 150px; }
+.more-card { justify-content: center; align-items: flex-start; border: 1px solid #3a3a38; padding: 18px; min-height: 150px; }
+.more-card .more-arrow { font-size: 1.6rem; color: var(--lime); }
+.more-card:hover { border-color: var(--lime); }
+.hero-back { width: auto !important; padding: 0 14px; font-size: .72rem !important; letter-spacing: .1em; text-transform: uppercase; }
+@keyframes subIn { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+@media (max-width: 560px) { .cat-group .cat-card:not(.sub) { flex-basis: 130px; } .cat-card.sub { flex-basis: 120px; } .sub-scroll { padding-left: 12px; margin-left: 10px; } }
+@media (prefers-reduced-motion: reduce) { .cat-group, .sub-scroll { transition: none; animation: none; } }
