@@ -7,8 +7,12 @@ import { getFreshPrices } from './prices';
 export const SET_SLOTS = [
   ['boots_id', 'Взуття'],
   ['pants_id', 'Штани'],
-  ['top_id', 'Верх'],
+  ['belt_id', 'Ремінь'],
+  ['top_id', 'Фліска / кофта'],
+  ['base_id', 'Байка (базовий шар)'],
+  ['jacket_id', 'Куртка'],
   ['headwear_id', 'Головний убір'],
+  ['glasses_id', 'Окуляри'],
   ['gloves_id', 'Рукавиці'],
   ['armor_id', 'Бронезахист'],
 ];
