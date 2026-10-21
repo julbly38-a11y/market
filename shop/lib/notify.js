@@ -6,26 +6,15 @@ import { orderUrl } from './orders';
 
 const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 
-export async function notifyPaidOrder(order, mydrop) {
+export async function sendMail(subject, html) {
   const key = process.env.RESEND_API_KEY;
   const to = process.env.NOTIFY_EMAIL;
   if (!key || !to) return { skipped: true };
-  const draft = mydrop?.id ? `чернетка MyDrop №${mydrop.id}` : `⚠️ чернетку MyDrop не створено: ${mydrop?.error || 'невідомо'}`;
-  const html = `<h3>Оплачене замовлення №${esc(order.id)}</h3>
-<p>${esc(order.product_name)} (арт. ${esc(order.sku)}) × ${esc(order.qty)} = <b>${esc(order.total)} ₴</b></p>
-<p>${esc(order.customer_name)}, ${esc(order.phone)}<br>${esc(order.city)}</p>
-<p>${esc(draft)}. Подайте її постачальнику в кабінеті MyDrop.</p>
-<p>Сторінка статусу для покупця: <a href="${esc(orderUrl(order.id))}">${esc(orderUrl(order.id))}</a></p>`;
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: process.env.NOTIFY_FROM || 'Форпост <onboarding@resend.dev>',
-        to: [to],
-        subject: `Нове замовлення №${order.id} — ${order.total} ₴`,
-        html,
-      }),
+      body: JSON.stringify({ from: process.env.NOTIFY_FROM || 'Форпост <onboarding@resend.dev>', to: [to], subject, html }),
     });
     if (!res.ok) console.error('notify failed', res.status, await res.text());
     return { ok: res.ok };
@@ -33,4 +22,14 @@ export async function notifyPaidOrder(order, mydrop) {
     console.error('notify error', err);
     return { ok: false };
   }
+}
+
+export async function notifyPaidOrder(order, mydrop) {
+  const draft = mydrop?.id ? `чернетка MyDrop №${mydrop.id}` : `⚠️ чернетку MyDrop не створено: ${mydrop?.error || 'невідомо'}`;
+  const html = `<h3>Оплачене замовлення №${esc(order.id)}</h3>
+<p>${esc(order.product_name)} (арт. ${esc(order.sku)}) × ${esc(order.qty)} = <b>${esc(order.total)} ₴</b></p>
+<p>${esc(order.customer_name)}, ${esc(order.phone)}<br>${esc(order.city)}</p>
+<p>${esc(draft)}. Подайте її постачальнику в кабінеті MyDrop.</p>
+<p>Сторінка статусу для покупця: <a href="${esc(orderUrl(order.id))}">${esc(orderUrl(order.id))}</a></p>`;
+  return sendMail(`Нове замовлення №${order.id} — ${order.total} ₴`, html);
 }

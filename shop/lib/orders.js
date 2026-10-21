@@ -50,7 +50,7 @@ export async function getLiveSupplierPrice(productId) {
   return items.get(itemId) ?? null;
 }
 
-const sb = (extra = {}) => ({
+export const sb = (extra = {}) => ({
   apikey: process.env.SUPABASE_SERVICE_KEY,
   Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
   'Content-Type': 'application/json',
