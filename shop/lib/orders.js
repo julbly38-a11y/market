@@ -139,7 +139,16 @@ export async function createMydropDraft(order) {
         },
       ],
       order_source: 'Форпост (сайт)',
-      description: order.note || undefined,
+      // Платіжні поля (накладений платіж, передоплата) у MyDrop задаються при подачі замовлення — це робить власник.
+      // Тому в чернетці чітко пишемо, як оплачено, щоб не стягнути гроші вдруге.
+      description:
+        [
+          order.payment_status === 'paid'
+            ? 'ОПЛАЧЕНО карткою (mono). Накладений платіж НЕ стягувати.'
+            : `НАКЛАДЕНИЙ ПЛАТІЖ: стягнути ${order.total} ₴ при отриманні.`,
+          order.note,
+        ].filter(Boolean).join(' | '),
+      private_description: `Форпост №${order.id}, ${order.payment_status === 'paid' ? 'оплачено карткою' : 'накладений платіж'}`,
     }),
   });
   const json = await res.json().catch(() => ({}));

@@ -52,3 +52,14 @@ export async function sendCustomerMail(to, subject, html) {
     return { ok: false };
   }
 }
+
+export async function notifyCodOrder(order, mydrop) {
+  const draft = mydrop?.id ? `чернетка MyDrop №${mydrop.id}` : `⚠️ чернетку MyDrop не створено: ${mydrop?.error || 'невідомо'}`;
+  const html = `<h3>Замовлення НАКЛАДЕНИМ ПЛАТЕЖЕМ №${esc(order.id)}</h3>
+<p><b>Не оплачено.</b> Зателефонуйте покупцеві й підтвердіть замовлення, потім подайте чернетку постачальнику з накладеним платежем <b>${esc(order.total)} ₴</b> без передоплати.</p>
+<p>${esc(order.product_name)} (арт. ${esc(order.sku)})${order.size ? `, розмір ${esc(order.size)}` : ''} × ${esc(order.qty)} = <b>${esc(order.total)} ₴</b></p>
+<p>${esc(order.customer_name)}, ${esc(order.phone)}<br>${esc(order.city)}</p>
+<p>${esc(draft)}.</p>
+<p>Сторінка статусу для покупця: <a href="${esc(orderUrl(order.id))}">${esc(orderUrl(order.id))}</a></p>`;
+  return sendMail(`Накладений платіж №${order.id} — ${order.total} ₴ (підтвердити)`, html);
+}

@@ -11,6 +11,8 @@ const ERR = {
   bad_warehouse: 'Виберіть відділення Нової пошти зі списку',
   bad_qty: 'Невірна кількість',
   bad_size: 'Виберіть розмір, який є в наявності',
+  cod_limit: 'Накладений платіж доступний для замовлень до 3000 ₴, оплатіть карткою',
+  too_many: 'Забагато замовлень з цього номера, спробуйте пізніше',
   unknown_product: 'Товар не знайдено',
   price_unavailable: 'Не вдалося уточнити ціну в постачальника, спробуйте ще раз за хвилину',
   not_saved: 'Не вдалося зберегти замовлення, спробуйте ще раз',
@@ -19,7 +21,7 @@ const ERR = {
 
 // Форма замовлення: у модальному вікні (швидке замовлення з каталогу) або вбудована на сторінці товару.
 export function OrderForm({ product, inline = false, onClose }) {
-  const [f, setF] = useState({ name: '', phone: '+380', email: '', city: '', warehouse: '', warehouseText: '', size: '', qty: 1, note: '', website: '' });
+  const [f, setF] = useState({ name: '', phone: '+380', email: '', payment: 'card', city: '', warehouse: '', warehouseText: '', size: '', qty: 1, note: '', website: '' });
   const [state, setState] = useState({ busy: false, error: '' });
   const [cities, setCities] = useState([]); // підказки міст
   const [cityRef, setCityRef] = useState('');
@@ -82,8 +84,8 @@ export function OrderForm({ product, inline = false, onClose }) {
         body: JSON.stringify({ ...f, city: city.name, cityRef, qty: Number(f.qty), productId: product.id }),
       });
       const json = await res.json();
-      if (!json.ok || !json.paymentUrl) throw new Error(ERR[json.error] || 'Помилка, спробуйте ще раз');
-      window.location.href = json.paymentUrl; // оплата карткою на сторінці mono pay
+      if (!json.ok || !(json.paymentUrl || json.orderUrl)) throw new Error(ERR[json.error] || 'Помилка, спробуйте ще раз');
+      window.location.href = json.paymentUrl || json.orderUrl; // картка: сторінка mono pay; накладений платіж: сторінка статусу
       setState({ busy: true, error: '' });
     } catch (err) {
       setState({ busy: false, error: err.message });
@@ -109,6 +111,15 @@ export function OrderForm({ product, inline = false, onClose }) {
       <div className="field">
         <label htmlFor={`p-${product.id}`}>Телефон</label>
         <input id={`p-${product.id}`} required autoComplete="tel" inputMode="tel" value={f.phone} onChange={set('phone')} />
+      </div>
+      <div className="field">
+        <label>Спосіб оплати</label>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: '1rem' }}>
+          <input type="radio" name={`pay-${product.id}`} checked={f.payment === 'card'} onChange={() => setF({ ...f, payment: 'card' })} style={{ width: 18, height: 18 }} /> Карткою онлайн
+        </label>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: '1rem' }}>
+          <input type="radio" name={`pay-${product.id}`} checked={f.payment === 'cod'} onChange={() => setF({ ...f, payment: 'cod' })} style={{ width: 18, height: 18 }} /> Накладений платіж (оплата в Новій Пошті)
+        </label>
       </div>
       <div className="field">
         <label htmlFor={`e-${product.id}`}>Email (необовʼязково)</label>
@@ -163,12 +174,12 @@ export function OrderForm({ product, inline = false, onClose }) {
       {state.error && <p className="err" role="alert">{state.error}</p>}
       {inline ? (
         <button className="buy wide" disabled={state.busy || product.stock < 1}>
-          {state.busy ? 'Переходимо до оплати…' : 'Оплатити карткою'}
+          {state.busy ? (f.payment === 'cod' ? 'Оформлюємо…' : 'Переходимо до оплати…') : (f.payment === 'cod' ? 'Оформити замовлення' : 'Оплатити карткою')}
         </button>
       ) : (
         <div className="row">
           <button type="button" className="ghost" onClick={onClose}>Скасувати</button>
-          <button className="buy" disabled={state.busy}>{state.busy ? 'Переходимо до оплати…' : 'Оплатити карткою'}</button>
+          <button className="buy" disabled={state.busy}>{state.busy ? (f.payment === 'cod' ? 'Оформлюємо…' : 'Переходимо до оплати…') : (f.payment === 'cod' ? 'Оформити замовлення' : 'Оплатити карткою')}</button>
         </div>
       )}
     </form>

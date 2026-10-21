@@ -6,8 +6,9 @@
 
 import { retailPrice } from '../../../lib/pricing';
 import { getBranches } from '../../../lib/np';
+import { notifyCodOrder } from '../../../lib/notify';
 import { getProductDetails } from '../../../lib/details';
-import { PRODUCTS, SITE, getLiveSupplierPrice, orderUrl, sbInsertOrder, sbPatchOrder } from '../../../lib/orders';
+import { PRODUCTS, SITE, createMydropDraft, getLiveSupplierPrice, orderUrl, sb, sbInsertOrder, sbPatchOrder } from '../../../lib/orders';
 
 const bad = (error, status = 400) => Response.json({ ok: false, error }, { status });
 
@@ -71,6 +72,15 @@ export async function POST(req) {
 
   const total = product.price * qty;
 
+  // Накладений платіж: ліміт суми й не більше 3 таких замовлень на добу з одного номера.
+  const cod = b.payment === 'cod';
+  if (cod) {
+    if (total > Number(process.env.COD_MAX_AMOUNT || 3000)) return bad('cod_limit');
+    const since = new Date(Date.now() - 86400_000).toISOString();
+    const r = await fetch(`${process.env.SUPABASE_URL}/rest/v1/orders?phone=eq.${encodeURIComponent(phone)}&payment_status=eq.cod&created_at=gte.${encodeURIComponent(since)}&select=id`, { headers: sb(), cache: 'no-store' });
+    if (((await r.json().catch(() => [])) || []).length >= 3) return bad('too_many', 429);
+  }
+
   let order = null;
   try {
     order = await sbInsertOrder({
@@ -87,13 +97,20 @@ export async function POST(req) {
       phone,
       city: `${city}, відділення НП №${warehouse}`,
       note: note || null,
-      status: 'pending_payment',
-      payment_status: 'pending',
+      status: cod ? 'new' : 'pending_payment',
+      payment_status: cod ? 'cod' : 'pending',
     });
   } catch (err) {
     console.error('Supabase insert failed', err);
   }
   if (!order) return bad('not_saved', 502);
+
+  if (cod) {
+    const md = await createMydropDraft(order).catch((err) => ({ id: null, error: String(err) }));
+    await sbPatchOrder(order.id, { mydrop_order_id: md.id, mydrop_error: md.error });
+    await notifyCodOrder(order, md);
+    return Response.json({ ok: true, orderId: order.id, orderUrl: orderUrl(order.id) });
+  }
 
   try {
     const res = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {

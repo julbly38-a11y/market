@@ -8,6 +8,10 @@ export const dynamic = 'force-dynamic';
 const FAILED = ['failure', 'expired', 'reversed', 'failed', 'amount_mismatch'];
 
 function stage(o) {
+  if (o.payment_status === 'cod') {
+    if (o.ttn) return { key: 'shipped', title: 'Замовлення відправлено', text: `Номер ТТН Нової Пошти: ${o.ttn}. Оплата при отриманні у відділенні.` };
+    return { key: 'cod', title: 'Замовлення прийнято', text: 'Оплата при отриманні в Новій Пошті. Ми зв’яжемось з вами за телефоном для підтвердження перед відправкою.' };
+  }
   if (o.payment_status === 'paid') {
     if (o.ttn) return { key: 'shipped', title: 'Замовлення відправлено', text: `Номер ТТН Нової Пошти: ${o.ttn}. Відстежити посилку можна на сайті Нової Пошти.` };
     return { key: 'paid', title: 'Оплачено, готуємо до відправки', text: 'Ми передали замовлення постачальнику. Номер ТТН надішлемо за вказаним телефоном, зазвичай протягом 1–3 робочих днів.' };
@@ -19,7 +23,7 @@ function stage(o) {
 }
 
 const STEPS = [
-  ['pending', 'Оплата'],
+  ['pending', 'Оформлення'],
   ['paid', 'Підготовка'],
   ['shipped', 'Відправлено'],
 ];
@@ -31,7 +35,7 @@ export default async function Page({ params }) {
   const order = await sbGetOrder(id);
   if (!order) notFound();
   const st = stage(order);
-  const at = STEPS.findIndex(([k]) => k === st.key);
+  const at = st.key === 'cod' ? 0 : STEPS.findIndex(([k]) => k === st.key);
 
   return (
     <main style={{ maxWidth: 640, lineHeight: 1.6, margin: '0 auto', padding: '32px 20px' }}>
