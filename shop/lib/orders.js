@@ -158,3 +158,14 @@ export function parseOrderRef(ref) {
   const b = Buffer.from(m[2]);
   return a.length === b.length && timingSafeEqual(a, b) ? m[1] : null;
 }
+
+// Посилання на відгук: /review/<id>-<токен> (окремий токен від сторінки статусу).
+export const reviewToken = (id) => createHmac('sha256', tokenSecret()).update(`review:${id}`).digest('hex').slice(0, 20);
+export const reviewUrl = (id) => `${SITE}/review/${id}-${reviewToken(id)}`;
+export function parseReviewRef(ref) {
+  const m = /^(\d{1,12})-([0-9a-f]{20})$/.exec(String(ref || ''));
+  if (!m || !tokenSecret()) return null;
+  const a = Buffer.from(reviewToken(m[1]));
+  const b = Buffer.from(m[2]);
+  return a.length === b.length && timingSafeEqual(a, b) ? m[1] : null;
+}

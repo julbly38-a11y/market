@@ -19,7 +19,7 @@ const ERR = {
 
 // Форма замовлення: у модальному вікні (швидке замовлення з каталогу) або вбудована на сторінці товару.
 export function OrderForm({ product, inline = false, onClose }) {
-  const [f, setF] = useState({ name: '', phone: '+380', city: '', warehouse: '', warehouseText: '', size: '', qty: 1, note: '', website: '' });
+  const [f, setF] = useState({ name: '', phone: '+380', email: '', city: '', warehouse: '', warehouseText: '', size: '', qty: 1, note: '', website: '' });
   const [state, setState] = useState({ busy: false, error: '' });
   const [cities, setCities] = useState([]); // підказки міст
   const [cityRef, setCityRef] = useState('');
@@ -111,6 +111,10 @@ export function OrderForm({ product, inline = false, onClose }) {
         <input id={`p-${product.id}`} required autoComplete="tel" inputMode="tel" value={f.phone} onChange={set('phone')} />
       </div>
       <div className="field">
+        <label htmlFor={`e-${product.id}`}>Email (необовʼязково)</label>
+        <input id={`e-${product.id}`} type="email" autoComplete="email" placeholder="Для листа про відгук" value={f.email} onChange={set('email')} />
+      </div>
+      <div className="field">
         <label htmlFor={`c-${product.id}`}>Місто</label>
         <input id={`c-${product.id}`} required autoComplete="off" list={`cl-${product.id}`} placeholder="Почніть вводити і виберіть зі списку" value={f.city} onChange={set('city')} />
         <datalist id={`cl-${product.id}`}>
@@ -155,7 +159,7 @@ export function OrderForm({ product, inline = false, onClose }) {
         <input id={`m-${product.id}`} placeholder="Необовʼязково" value={f.note} onChange={set('note')} />
       </div>
       <input className="hp" tabIndex="-1" autoComplete="off" name="website" value={f.website} onChange={set('website')} aria-hidden="true" />
-      <p className="fine">Натискаючи кнопку, ви погоджуєтесь з <a href="/oferta" target="_blank">офертою</a>.</p>
+      <p className="fine">Натискаючи кнопку, ви погоджуєтесь з <a href="/oferta" target="_blank">офертою</a> і <a href="/konfidentsiynist" target="_blank">політикою конфіденційності</a>. Після покупки ми можемо надіслати SMS або лист із проханням про відгук.</p>
       {state.error && <p className="err" role="alert">{state.error}</p>}
       {inline ? (
         <button className="buy wide" disabled={state.busy || product.stock < 1}>

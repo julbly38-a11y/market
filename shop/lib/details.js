@@ -36,3 +36,17 @@ export function detailsRow(id, item) {
     updated_at: new Date().toISOString(),
   };
 }
+
+// Схвалені відгуки товару (market.reviews, approved = true). Порожній масив, якщо відгуків нема.
+export async function getApprovedReviews(productId) {
+  try {
+    const res = await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/reviews?product_id=eq.${encodeURIComponent(productId)}&approved=is.true&select=rating,name,text,created_at&order=created_at.desc&limit=50`,
+      { headers: sb(), next: { revalidate: 300 } }
+    );
+    const rows = await res.json();
+    return Array.isArray(rows) ? rows : [];
+  } catch {
+    return [];
+  }
+}

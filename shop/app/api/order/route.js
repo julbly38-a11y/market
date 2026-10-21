@@ -27,6 +27,8 @@ export async function POST(req) {
   const city = String(b.city || '').trim();
   const warehouse = String(b.warehouse || '').trim();
   const note = String(b.note || '').trim().slice(0, 500);
+  const emailRaw = String(b.email || '').trim().slice(0, 120);
+  const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw) ? emailRaw : null;
 
   if (!catalogItem) return bad('unknown_product');
 
@@ -79,6 +81,7 @@ export async function POST(req) {
       supplier_price: live.price,
       qty,
       size: size || null,
+      email,
       total,
       customer_name: name,
       phone,

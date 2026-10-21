@@ -3,7 +3,7 @@ import data from '../../../data/products.json';
 import { groupOf } from '../../../lib/groups';
 import ProductBuy from './ProductBuy';
 import Gallery from './Gallery';
-import { getProductDetails } from '../../../lib/details';
+import { getApprovedReviews, getProductDetails } from '../../../lib/details';
 import { retailPrice } from '../../../lib/pricing';
 
 const find = (id) => {
@@ -27,6 +27,8 @@ export default async function Page({ params }) {
   const p = find(id);
   if (!p) notFound();
   const details = await getProductDetails(p.id);
+  const reviews = await getApprovedReviews(p.id);
+  const avg = reviews.length ? reviews.reduce((a, r) => a + r.rating, 0) / reviews.length : 0;
   const images = details?.images?.length ? details.images : [p.image];
   const sizes = details?.sizes || [];
   const group = groupOf(p);
@@ -69,6 +71,24 @@ export default async function Page({ params }) {
             <section style={{ margin: '24px 0' }}>
               <h2 style={{ fontSize: '1.1rem' }}>Таблиця розмірів</h2>
               <img src={details.size_chart} alt="Таблиця розмірів" style={{ maxWidth: '100%' }} />
+            </section>
+          )}
+
+          {reviews.length > 0 && (
+            <section style={{ margin: '24px 0' }}>
+              <h2 style={{ fontSize: '1.1rem' }}>
+                Відгуки <span style={{ color: '#e8a400' }}>★</span> {avg.toFixed(1)} ({reviews.length})
+              </h2>
+              {reviews.map((r, i) => (
+                <div key={i} style={{ margin: '14px 0', paddingBottom: 14, borderBottom: '1px solid #eee' }}>
+                  <div><span style={{ color: '#e8a400' }}>{'★'.repeat(r.rating)}</span><span style={{ color: '#ccc' }}>{'★'.repeat(5 - r.rating)}</span> <b>{r.name}</b> <small style={{ color: '#888' }}>· підтверджена покупка</small></div>
+                  {r.text && <p style={{ margin: '6px 0 0', whiteSpace: 'pre-line' }}>{r.text}</p>}
+                </div>
+              ))}
+              <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+                '@context': 'https://schema.org', '@type': 'Product', name: p.title, image: images,
+                aggregateRating: { '@type': 'AggregateRating', ratingValue: avg.toFixed(1), reviewCount: reviews.length },
+              }) }} />
             </section>
           )}
 

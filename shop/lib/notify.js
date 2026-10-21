@@ -33,3 +33,22 @@ export async function notifyPaidOrder(order, mydrop) {
 <p>Сторінка статусу для покупця: <a href="${esc(orderUrl(order.id))}">${esc(orderUrl(order.id))}</a></p>`;
   return sendMail(`Нове замовлення №${order.id} — ${order.total} ₴`, html);
 }
+
+// Лист покупцю: працює лише з верифікованого домену (NOTIFY_FROM не resend.dev), інакше Resend шле тільки власнику.
+export const customerMailReady = () => !!process.env.RESEND_API_KEY && !!process.env.NOTIFY_FROM && !/resend\.dev/i.test(process.env.NOTIFY_FROM);
+
+export async function sendCustomerMail(to, subject, html) {
+  if (!customerMailReady()) return { skipped: true };
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: process.env.NOTIFY_FROM, to: [to], subject, html }),
+    });
+    if (!res.ok) console.error('customer mail failed', res.status, await res.text());
+    return { ok: res.ok };
+  } catch (err) {
+    console.error('customer mail error', err);
+    return { ok: false };
+  }
+}
