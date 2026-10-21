@@ -1,7 +1,7 @@
 import data from '../data/products.json';
 import { getFreshPrices } from '../lib/prices';
 
-const SITE = (process.env.SITE_URL || 'https://forpost-shop.vercel.app').replace(/\/$/, '');
+import { SITE_BASE as SITE } from '../lib/site';
 
 export const revalidate = 3600;
 

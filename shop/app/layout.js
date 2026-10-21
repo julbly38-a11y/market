@@ -1,10 +1,11 @@
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { SITE_BASE } from '../lib/site';
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'], display: 'swap', variable: '--font' });
 
 export const metadata = {
-  metadataBase: new URL(process.env.SITE_URL || 'https://forpost-shop.vercel.app'),
+  metadataBase: new URL(SITE_BASE),
   title: 'Форпост — товари напряму зі складу',
   description: 'Одяг, спорядження, енергія та інше напряму від постачальників. Оплата карткою, доставка Новою Поштою.',
   openGraph: { siteName: 'Форпост', locale: 'uk_UA', type: 'website' },

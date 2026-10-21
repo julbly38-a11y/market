@@ -1,4 +1,4 @@
-const SITE = (process.env.SITE_URL || 'https://forpost-shop.vercel.app').replace(/\/$/, '');
+import { SITE_BASE as SITE } from '../lib/site';
 
 export default function robots() {
   return {

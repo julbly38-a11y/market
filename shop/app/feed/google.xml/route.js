@@ -4,6 +4,7 @@ import data from '../../../data/products.json';
 import { retailPrice } from '../../../lib/pricing';
 import { getFreshPrices } from '../../../lib/prices';
 import { sb } from '../../../lib/orders';
+import { SITE_BASE } from '../../../lib/site';
 
 export const revalidate = 3600;
 
@@ -24,7 +25,7 @@ async function loadDetails() {
 }
 
 export async function GET() {
-  const base = (process.env.SITE_URL || 'https://forpost-shop.vercel.app').replace(/\/$/, '');
+  const base = SITE_BASE;
   const [fresh, details] = await Promise.all([getFreshPrices(), loadDetails()]);
   const items = [];
   for (const p of data.products) {
