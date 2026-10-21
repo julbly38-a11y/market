@@ -55,7 +55,14 @@ export default async function Page({ params }) {
       )}
 
       <h2>Склад замовлення</h2>
-      <p>{order.product_name}{order.size ? `, розмір ${order.size}` : ''} × {order.qty} — <b>{order.total} ₴</b></p>
+      {Array.isArray(order.items) && order.items.length ? (
+        <>
+          <p><b>{order.product_name}</b> — <b>{order.total} ₴</b></p>
+          <ul>{order.items.map((i) => <li key={i.id}>{i.label}: {i.title}{i.size ? `, розмір ${i.size}` : ''}</li>)}</ul>
+        </>
+      ) : (
+        <p>{order.product_name}{order.size ? `, розмір ${order.size}` : ''} × {order.qty} — <b>{order.total} ₴</b></p>
+      )}
       <p>Доставка: {order.city}</p>
       <p>Питання за замовленням: <a href="/povernennya">доставка і повернення</a>. Збережіть це посилання.</p>
 

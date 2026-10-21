@@ -1,5 +1,6 @@
 import data from '../data/products.json';
 import { getFreshPrices } from '../lib/prices';
+import { listSetRows } from '../lib/sets';
 
 import { SITE_BASE as SITE } from '../lib/site';
 
@@ -13,5 +14,6 @@ export default async function sitemap() {
   const products = data.products
     .filter((p) => (fresh.get(p.id)?.stock ?? p.stock) > 0)
     .map((p) => ({ url: `${SITE}/p/${p.id}`, lastModified: now }));
-  return [...pages, ...products];
+  const sets = (await listSetRows()).map((x) => ({ url: `${SITE}/nabir/${x.slug}`, lastModified: now }));
+  return [...pages, ...sets, ...products];
 }

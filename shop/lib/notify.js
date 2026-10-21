@@ -4,6 +4,11 @@
 
 import { orderUrl } from './orders';
 
+const itemsHtml = (order) =>
+  Array.isArray(order.items) && order.items.length
+    ? `<p><b>${esc(order.product_name)}</b> = <b>${esc(order.total)} ₴</b></p><ul>${order.items.map((i) => `<li>${esc(i.label)}: ${esc(i.title)}${i.size ? `, розмір ${esc(i.size)}` : ''} (арт. ${esc(i.sku)}) — ${esc(i.price)} ₴</li>`).join('')}</ul>`
+    : `<p>${esc(order.product_name)} (арт. ${esc(order.sku)})${order.size ? `, розмір ${esc(order.size)}` : ''} × ${esc(order.qty)} = <b>${esc(order.total)} ₴</b></p>`;
+
 const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 
 export async function sendMail(subject, html) {
@@ -27,7 +32,7 @@ export async function sendMail(subject, html) {
 export async function notifyPaidOrder(order, mydrop) {
   const draft = mydrop?.id ? `чернетка MyDrop №${mydrop.id}` : `⚠️ чернетку MyDrop не створено: ${mydrop?.error || 'невідомо'}`;
   const html = `<h3>Оплачене замовлення №${esc(order.id)}</h3>
-<p>${esc(order.product_name)} (арт. ${esc(order.sku)})${order.size ? `, розмір ${esc(order.size)}` : ''} × ${esc(order.qty)} = <b>${esc(order.total)} ₴</b></p>
+${itemsHtml(order)}
 <p>${esc(order.customer_name)}, ${esc(order.phone)}<br>${esc(order.city)}</p>
 <p>${esc(draft)}. Подайте її постачальнику в кабінеті MyDrop.</p>
 <p>Сторінка статусу для покупця: <a href="${esc(orderUrl(order.id))}">${esc(orderUrl(order.id))}</a></p>`;
@@ -57,7 +62,7 @@ export async function notifyCodOrder(order, mydrop) {
   const draft = mydrop?.id ? `чернетка MyDrop №${mydrop.id}` : `⚠️ чернетку MyDrop не створено: ${mydrop?.error || 'невідомо'}`;
   const html = `<h3>Замовлення НАКЛАДЕНИМ ПЛАТЕЖЕМ №${esc(order.id)}</h3>
 <p><b>Не оплачено.</b> Зателефонуйте покупцеві й підтвердіть замовлення, потім подайте чернетку постачальнику з накладеним платежем <b>${esc(order.total)} ₴</b> без передоплати.</p>
-<p>${esc(order.product_name)} (арт. ${esc(order.sku)})${order.size ? `, розмір ${esc(order.size)}` : ''} × ${esc(order.qty)} = <b>${esc(order.total)} ₴</b></p>
+${itemsHtml(order)}
 <p>${esc(order.customer_name)}, ${esc(order.phone)}<br>${esc(order.city)}</p>
 <p>${esc(draft)}.</p>
 <p>Сторінка статусу для покупця: <a href="${esc(orderUrl(order.id))}">${esc(orderUrl(order.id))}</a></p>`;

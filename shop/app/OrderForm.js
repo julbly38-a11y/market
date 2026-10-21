@@ -11,6 +11,8 @@ const ERR = {
   bad_warehouse: 'Виберіть відділення Нової пошти зі списку',
   bad_qty: 'Невірна кількість',
   bad_size: 'Виберіть розмір, який є в наявності',
+  unknown_set: 'Набір не знайдено',
+  set_out_of_stock: 'Частини набору зараз немає в наявності',
   cod_limit: 'Накладений платіж доступний для замовлень до 3000 ₴, оплатіть карткою',
   too_many: 'Забагато замовлень з цього номера, спробуйте пізніше',
   unknown_product: 'Товар не знайдено',
@@ -20,7 +22,7 @@ const ERR = {
 };
 
 // Форма замовлення: у модальному вікні (швидке замовлення з каталогу) або вбудована на сторінці товару.
-export function OrderForm({ product, inline = false, onClose }) {
+export function OrderForm({ product, inline = false, onClose, extra = null, blocked = '' }) {
   const [f, setF] = useState({ name: '', phone: '+380', email: '', payment: 'card', city: '', warehouse: '', warehouseText: '', size: '', qty: 1, note: '', website: '' });
   const [state, setState] = useState({ busy: false, error: '' });
   const [cities, setCities] = useState([]); // підказки міст
@@ -72,6 +74,7 @@ export function OrderForm({ product, inline = false, onClose }) {
 
   async function submit(e) {
     e.preventDefault();
+    if (blocked) return setState({ busy: false, error: blocked });
     const city = cities.find((c) => c.ref === cityRef);
     if (!city) return setState({ busy: false, error: ERR.bad_city });
     if (!f.warehouse) return setState({ busy: false, error: ERR.bad_warehouse });
@@ -81,7 +84,7 @@ export function OrderForm({ product, inline = false, onClose }) {
       const res = await fetch('/api/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...f, city: city.name, cityRef, qty: Number(f.qty), productId: product.id }),
+        body: JSON.stringify({ ...f, city: city.name, cityRef, qty: extra ? 1 : Number(f.qty), productId: product.id, ...(extra || {}) }),
       });
       const json = await res.json();
       if (!json.ok || !(json.paymentUrl || json.orderUrl)) throw new Error(ERR[json.error] || 'Помилка, спробуйте ще раз');
@@ -157,14 +160,14 @@ export function OrderForm({ product, inline = false, onClose }) {
           </div>
         </div>
       )}
-      <div className="field">
+      {!extra && <div className="field">
         <label>Кількість</label>
         <div className="stepper">
           <button type="button" onClick={() => step(-1)} disabled={f.qty <= 1} aria-label="Менше">−</button>
           <span>{f.qty}</span>
           <button type="button" onClick={() => step(1)} disabled={f.qty >= max} aria-label="Більше">+</button>
         </div>
-      </div>
+      </div>}
       <div className="field">
         <label htmlFor={`m-${product.id}`}>Коментар</label>
         <input id={`m-${product.id}`} placeholder="Необовʼязково" value={f.note} onChange={set('note')} />

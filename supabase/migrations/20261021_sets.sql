@@ -18,3 +18,7 @@ create table if not exists market.sets (
 alter table market.sets enable row level security;
 grant select, insert, update, delete on market.sets to service_role;
 grant usage, select on all sequences in schema market to service_role;
+
+-- Замовлення набору: список позицій (id, назва, артикул, розмір, ціна) і посилання на набір.
+alter table market.orders add column if not exists items jsonb;
+alter table market.orders add column if not exists set_id bigint;

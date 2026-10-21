@@ -128,16 +128,25 @@ export async function createMydropDraft(order) {
       city,
       warehouse_number: warehouse,
       delivery_service: 'nova_poshta',
-      products: [
-        {
-          vendor_name: product?.vendor,
-          product_title: order.product_name,
-          sku: order.sku,
-          price: order.unit_price,
-          amount: order.qty,
-          ...(order.size ? { size_title: order.size } : {}),
-        },
-      ],
+      products: Array.isArray(order.items) && order.items.length
+        ? order.items.map((i) => ({
+            vendor_name: i.vendor,
+            product_title: i.title,
+            sku: i.sku,
+            price: i.price,
+            amount: 1,
+            ...(i.size ? { size_title: i.size } : {}),
+          }))
+        : [
+            {
+              vendor_name: product?.vendor,
+              product_title: order.product_name,
+              sku: order.sku,
+              price: order.unit_price,
+              amount: order.qty,
+              ...(order.size ? { size_title: order.size } : {}),
+            },
+          ],
       order_source: 'Форпост (сайт)',
       // Платіжні поля (накладений платіж, передоплата) у MyDrop задаються при подачі замовлення — це робить власник.
       // Тому в чернетці чітко пишемо, як оплачено, щоб не стягнути гроші вдруге.
