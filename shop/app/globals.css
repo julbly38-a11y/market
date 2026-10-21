@@ -228,7 +228,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 28px 20px 72px; }
 .hero-scroll { display: flex; align-items: stretch; gap: 14px; width: 100%; height: 86%; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
 .hero-scroll::-webkit-scrollbar { display: none; }
 .cat-group { flex: none; display: flex; align-items: stretch; height: 100%; scroll-snap-align: start; overflow: hidden; max-width: 700px; transition: max-width .3s ease, opacity .2s ease; }
-.cat-card { position: relative; display: block; flex: 0 0 clamp(207px, 25.9vw, 397px); height: 100%; background: #1b1b1c; overflow: hidden; color: #fff; text-decoration: none; }
+.cat-card { cursor: pointer; position: relative; display: block; flex: 0 0 clamp(207px, 25.9vw, 397px); height: 100%; background: #1b1b1c; overflow: hidden; color: #fff; text-decoration: none; }
 .cat-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .5s ease; }
 .cat-card:hover img { transform: scale(1.04); }
 .cat-info { position: absolute; left: 0; right: 0; bottom: 0; padding: 56px 20px 18px; background: linear-gradient(180deg, transparent, rgba(0,0,0,.78)); display: flex; flex-direction: column; gap: 4px; }

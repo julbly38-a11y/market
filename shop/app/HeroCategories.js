@@ -5,8 +5,8 @@ import { useRef, useState } from 'react';
 const href = (g, c) => `/?g=${encodeURIComponent(g)}${c ? `&c=${encodeURIComponent(c)}` : ''}#catalog`;
 
 // Чорне поле на всю ширину, фото категорій майже на всю його висоту (відступ ~5 мм від країв).
-// Наведення на категорію: решта зникає, праворуч від вибраної зʼявляються фото підкатегорій.
-// Курсор пішов з поля — повертаються всі категорії. На сенсорних екранах перший дотик відкриває підкатегорії, другий веде в каталог.
+// Клік по категорії: решта зникає, праворуч від вибраної зʼявляються фото підкатегорій. Повторний клік по ній
+// або кнопка «Усі категорії» повертають усі категорії; у каталог веде картка «Усі товари розділу» і кліки по підкатегоріях.
 export default function HeroCategories({ items }) {
   const [active, setActive] = useState(null);
   const strip = useRef(null);
@@ -16,17 +16,15 @@ export default function HeroCategories({ items }) {
     el?.scrollBy({ left: dir * Math.max(el.clientWidth * 0.6, 240), behavior: 'smooth' });
   };
 
-  const tap = (e, g) => {
-    if (window.matchMedia('(hover: none)').matches && active !== g) {
-      e.preventDefault();
-      setActive(g);
-    }
+  const toggle = (e, g) => {
+    e.preventDefault();
+    setActive((now) => (now === g ? null : g));
   };
 
   const cur = items.find((c) => c.group === active);
 
   return (
-    <div className="hero-field" onMouseLeave={() => setActive(null)}>
+    <div className="hero-field">
       <div className="hero-ctrl">
         {cur && <button type="button" className="hero-back" onClick={() => setActive(null)}>Усі категорії</button>}
         <button type="button" aria-label="Назад" onClick={() => by(-1)}>←</button>
@@ -37,8 +35,8 @@ export default function HeroCategories({ items }) {
         {items.map((c) => {
           const open = active === c.group;
           return (
-            <div key={c.group} className={`cat-group${open ? ' open' : ''}${active && !open ? ' gone' : ''}`} onMouseEnter={() => setActive(c.group)}>
-              <a className="cat-card" href={href(c.group)} onFocus={() => setActive(c.group)} onClick={(e) => tap(e, c.group)}>
+            <div key={c.group} className={`cat-group${open ? ' open' : ''}${active && !open ? ' gone' : ''}`}>
+              <a className="cat-card" href={href(c.group)} aria-expanded={open} onClick={(e) => toggle(e, c.group)}>
                 <img src={c.image} alt="" loading="lazy" />
                 <span className="cat-info">
                   <span className="cat-name">{c.group}</span>
