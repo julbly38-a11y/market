@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import data from '../../../data/products.json';
 import { groupOf } from '../../../lib/groups';
 import ProductBuy from './ProductBuy';
+import Gallery from './Gallery';
+import { getProductDetails } from '../../../lib/details';
 import { retailPrice } from '../../../lib/pricing';
 
 const find = (id) => {
@@ -24,6 +26,9 @@ export default async function Page({ params }) {
   const { id } = await params;
   const p = find(id);
   if (!p) notFound();
+  const details = await getProductDetails(p.id);
+  const images = details?.images?.length ? details.images : [p.image];
+  const sizes = details?.sizes || [];
   const group = groupOf(p);
   const money = new Intl.NumberFormat('uk-UA');
 
@@ -37,7 +42,7 @@ export default async function Page({ params }) {
 
       <div className="product">
         <div className="p-media">
-          <img src={p.image} alt={p.title} />
+          <Gallery images={images} alt={p.title} />
         </div>
 
         <div className="p-info">
@@ -51,8 +56,21 @@ export default async function Page({ params }) {
 
           <div className="p-card">
             <h2>Оформити замовлення</h2>
-            <ProductBuy product={{ id: p.id, title: p.title, price: p.price, stock: p.stock, vendor: p.vendor }} />
+            <ProductBuy product={{ id: p.id, title: p.title, price: p.price, stock: p.stock, vendor: p.vendor, sizes }} />
           </div>
+
+          {details?.description && (
+            <section style={{ margin: '24px 0' }}>
+              <h2 style={{ fontSize: '1.1rem' }}>Опис</h2>
+              <p style={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>{details.description}</p>
+            </section>
+          )}
+          {details?.size_chart && (
+            <section style={{ margin: '24px 0' }}>
+              <h2 style={{ fontSize: '1.1rem' }}>Таблиця розмірів</h2>
+              <img src={details.size_chart} alt="Таблиця розмірів" style={{ maxWidth: '100%' }} />
+            </section>
+          )}
 
           <ul className="trust">
             <li><i>₴</i><div><b>Оплата карткою онлайн</b>Через monobank. Дані картки нам не передаються.</div></li>

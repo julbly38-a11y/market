@@ -51,7 +51,7 @@ export default async function Page({ params }) {
       )}
 
       <h2>Склад замовлення</h2>
-      <p>{order.product_name} × {order.qty} — <b>{order.total} ₴</b></p>
+      <p>{order.product_name}{order.size ? `, розмір ${order.size}` : ''} × {order.qty} — <b>{order.total} ₴</b></p>
       <p>Доставка: {order.city}</p>
       <p>Питання за замовленням: <a href="/povernennya">доставка і повернення</a>. Збережіть це посилання.</p>
 

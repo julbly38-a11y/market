@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { GROUPS } from '../lib/groups';
-import { OrderForm, money } from './OrderForm';
+import { money } from './OrderForm';
 
 const PAGE = 48;
 
@@ -14,7 +14,6 @@ export default function Catalog({ products, vendors }) {
   const [inStock, setInStock] = useState(true);
   const [sort, setSort] = useState('category');
   const [limit, setLimit] = useState(PAGE);
-  const [order, setOrder] = useState(null);
 
   const categories = useMemo(() => {
     const pool = products.filter((p) => (vendor === 'all' || p.vendor === vendor) && (group === 'all' || p.group === group));
@@ -112,7 +111,7 @@ export default function Catalog({ products, vendors }) {
                   <span className="price">{money.format(p.price)} ₴</span>
                   <span className={p.stock > 0 ? 'stock ok' : 'stock'}>{p.stock > 0 ? 'в наявності' : 'немає'}</span>
                 </div>
-                <button className="buy" disabled={p.stock < 1} onClick={() => setOrder(p)}>Замовити</button>
+                <a className="buy" href={`/p/${p.id}`} aria-disabled={p.stock < 1} style={p.stock < 1 ? { pointerEvents: 'none', opacity: 0.5 } : undefined}>Замовити</a>
               </div>
             </article>
           </Fragment>
@@ -121,7 +120,6 @@ export default function Catalog({ products, vendors }) {
 
       <PaidNotice />
 
-      {order && <OrderForm product={order} onClose={() => setOrder(null)} />}
 
       {limit < filtered.length && (
         <div className="more">

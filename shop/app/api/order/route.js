@@ -6,6 +6,7 @@
 
 import { retailPrice } from '../../../lib/pricing';
 import { getBranches } from '../../../lib/np';
+import { getProductDetails } from '../../../lib/details';
 import { PRODUCTS, SITE, getLiveSupplierPrice, orderUrl, sbInsertOrder, sbPatchOrder } from '../../../lib/orders';
 
 const bad = (error, status = 400) => Response.json({ ok: false, error }, { status });
@@ -57,6 +58,15 @@ export async function POST(req) {
     }
   }
 
+  // Розмір: якщо у товару є розміри, він обовʼязковий і має бути в наявності.
+  const details = await getProductDetails(catalogItem.id, { fresh: true });
+  const sizes = details?.sizes || [];
+  const size = String(b.size || '').trim();
+  if (sizes.length) {
+    const z = sizes.find((x) => x.title === size);
+    if (!z || z.stock < qty) return bad('bad_size');
+  }
+
   const total = product.price * qty;
 
   let order = null;
@@ -68,6 +78,7 @@ export async function POST(req) {
       unit_price: product.price,
       supplier_price: live.price,
       qty,
+      size: size || null,
       total,
       customer_name: name,
       phone,

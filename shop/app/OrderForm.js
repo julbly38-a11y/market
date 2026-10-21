@@ -10,6 +10,7 @@ const ERR = {
   bad_city: 'Виберіть місто зі списку',
   bad_warehouse: 'Виберіть відділення Нової пошти зі списку',
   bad_qty: 'Невірна кількість',
+  bad_size: 'Виберіть розмір, який є в наявності',
   unknown_product: 'Товар не знайдено',
   price_unavailable: 'Не вдалося уточнити ціну в постачальника, спробуйте ще раз за хвилину',
   not_saved: 'Не вдалося зберегти замовлення, спробуйте ще раз',
@@ -18,13 +19,15 @@ const ERR = {
 
 // Форма замовлення: у модальному вікні (швидке замовлення з каталогу) або вбудована на сторінці товару.
 export function OrderForm({ product, inline = false, onClose }) {
-  const [f, setF] = useState({ name: '', phone: '+380', city: '', warehouse: '', warehouseText: '', qty: 1, note: '', website: '' });
+  const [f, setF] = useState({ name: '', phone: '+380', city: '', warehouse: '', warehouseText: '', size: '', qty: 1, note: '', website: '' });
   const [state, setState] = useState({ busy: false, error: '' });
   const [cities, setCities] = useState([]); // підказки міст
   const [cityRef, setCityRef] = useState('');
   const [branches, setBranches] = useState([]);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
-  const max = Math.max(product.stock, 1);
+  const sizes = product.sizes || [];
+  const sizeStock = sizes.find((z) => z.title === f.size)?.stock;
+  const max = Math.max(sizes.length && sizeStock != null ? sizeStock : product.stock, 1);
   const step = (d) => setF((x) => ({ ...x, qty: Math.min(max, Math.max(1, Number(x.qty) + d)) }));
 
   // Міста: підказки з довідника НП. Коли введений текст збігається з варіантом — фіксуємо місто.
@@ -70,6 +73,7 @@ export function OrderForm({ product, inline = false, onClose }) {
     const city = cities.find((c) => c.ref === cityRef);
     if (!city) return setState({ busy: false, error: ERR.bad_city });
     if (!f.warehouse) return setState({ busy: false, error: ERR.bad_warehouse });
+    if (sizes.length && !f.size) return setState({ busy: false, error: ERR.bad_size });
     setState({ busy: true, error: '' });
     try {
       const res = await fetch('/api/order', {
@@ -120,6 +124,24 @@ export function OrderForm({ product, inline = false, onClose }) {
           {branches.map((w) => <option key={w.number} value={w.name} />)}
         </datalist>
       </div>
+      {sizes.length > 0 && (
+        <div className="field">
+          <label>Розмір</label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {sizes.map((z) => (
+              <button
+                key={z.title}
+                type="button"
+                disabled={z.stock < 1}
+                onClick={() => setF((x) => ({ ...x, size: z.title, qty: 1 }))}
+                style={{ minWidth: 48, padding: '8px 12px', borderRadius: 8, border: f.size === z.title ? '2px solid #1f1f1f' : '1px solid #ccc', background: f.size === z.title ? '#1f1f1f' : '#fff', color: f.size === z.title ? '#fff' : z.stock < 1 ? '#aaa' : '#1f1f1f', textDecoration: z.stock < 1 ? 'line-through' : 'none', cursor: z.stock < 1 ? 'not-allowed' : 'pointer' }}
+              >
+                {z.title}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="field">
         <label>Кількість</label>
         <div className="stepper">

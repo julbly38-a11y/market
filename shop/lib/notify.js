@@ -27,7 +27,7 @@ export async function sendMail(subject, html) {
 export async function notifyPaidOrder(order, mydrop) {
   const draft = mydrop?.id ? `чернетка MyDrop №${mydrop.id}` : `⚠️ чернетку MyDrop не створено: ${mydrop?.error || 'невідомо'}`;
   const html = `<h3>Оплачене замовлення №${esc(order.id)}</h3>
-<p>${esc(order.product_name)} (арт. ${esc(order.sku)}) × ${esc(order.qty)} = <b>${esc(order.total)} ₴</b></p>
+<p>${esc(order.product_name)} (арт. ${esc(order.sku)})${order.size ? `, розмір ${esc(order.size)}` : ''} × ${esc(order.qty)} = <b>${esc(order.total)} ₴</b></p>
 <p>${esc(order.customer_name)}, ${esc(order.phone)}<br>${esc(order.city)}</p>
 <p>${esc(draft)}. Подайте її постачальнику в кабінеті MyDrop.</p>
 <p>Сторінка статусу для покупця: <a href="${esc(orderUrl(order.id))}">${esc(orderUrl(order.id))}</a></p>`;

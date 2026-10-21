@@ -127,6 +127,7 @@ export async function createMydropDraft(order) {
           sku: order.sku,
           price: order.unit_price,
           amount: order.qty,
+          ...(order.size ? { size_title: order.size } : {}),
         },
       ],
       order_source: 'Форпост (сайт)',
