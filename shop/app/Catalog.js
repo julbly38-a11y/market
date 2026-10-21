@@ -65,10 +65,12 @@ export default function Catalog({ products, vendors }) {
 
   // ?g=<тип товарів> з меню шапки
   useEffect(() => {
-    const g = new URLSearchParams(window.location.search).get('g');
+    const sp = new URLSearchParams(window.location.search);
+    const g = sp.get('g');
     if (g && GROUPS.includes(g)) {
       setGroup(g);
-      setCategory('all');
+      const c = sp.get('c');
+      setCategory(c && products.some((p) => p.group === g && p.category.trim() === c) ? c : 'all');
     }
   }, []);
 
