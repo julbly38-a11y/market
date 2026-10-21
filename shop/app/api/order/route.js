@@ -5,7 +5,7 @@
 // Чернетка MyDrop створюється лише після підтвердженої оплати (див. /api/mono-webhook).
 
 import { retailPrice } from '../../../lib/pricing';
-import { PRODUCTS, SITE, getLiveSupplierPrice, sbInsertOrder, sbPatchOrder } from '../../../lib/orders';
+import { PRODUCTS, SITE, getLiveSupplierPrice, orderUrl, sbInsertOrder, sbPatchOrder } from '../../../lib/orders';
 
 const bad = (error, status = 400) => Response.json({ ok: false, error }, { status });
 
@@ -81,7 +81,7 @@ export async function POST(req) {
           destination: `Замовлення №${order.id}`,
           basketOrder: [{ name: product.title, qty, sum: product.price * 100, code: String(product.sku) }],
         },
-        redirectUrl: `${SITE}/?order=${encodeURIComponent(order.id)}`,
+        redirectUrl: orderUrl(order.id),
         webHookUrl: `${SITE}/api/mono-webhook`,
       }),
     });

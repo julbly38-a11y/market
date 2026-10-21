@@ -2,6 +2,8 @@
 
 import data from '../data/products.json';
 
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
 export const SITE = (process.env.SITE_URL || 'https://forpost-shop.vercel.app').replace(/\/$/, '');
 
 export const PRODUCTS = new Map(data.products.map((p) => [p.id, p]));
@@ -134,4 +136,16 @@ export async function createMydropDraft(order) {
   const json = await res.json().catch(() => ({}));
   if (res.ok) return { id: json.id ?? null, error: null };
   return { id: null, error: json.message || json.reason || `mydrop_http_${res.status}` };
+}
+
+// Посилання на статус замовлення: /order/<id>-<токен>. Токен — HMAC від id, тож чужі замовлення не перебрати.
+const tokenSecret = () => process.env.ORDER_TOKEN_SECRET || process.env.CRON_SECRET || '';
+export const orderToken = (id) => createHmac('sha256', tokenSecret()).update(String(id)).digest('hex').slice(0, 20);
+export const orderUrl = (id) => `${SITE}/order/${id}-${orderToken(id)}`;
+export function parseOrderRef(ref) {
+  const m = /^(\d{1,12})-([0-9a-f]{20})$/.exec(String(ref || ''));
+  if (!m || !tokenSecret()) return null;
+  const a = Buffer.from(orderToken(m[1]));
+  const b = Buffer.from(m[2]);
+  return a.length === b.length && timingSafeEqual(a, b) ? m[1] : null;
 }
