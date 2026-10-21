@@ -3,6 +3,7 @@ import data from '../../../data/products.json';
 import { groupOf } from '../../../lib/groups';
 import ProductBuy from './ProductBuy';
 import Gallery from './Gallery';
+import ReviewBox from './ReviewBox';
 import { getApprovedReviews, getProductDetails } from '../../../lib/details';
 import { retailPrice } from '../../../lib/pricing';
 
@@ -81,7 +82,7 @@ export default async function Page({ params }) {
               </h2>
               {reviews.map((r, i) => (
                 <div key={i} style={{ margin: '14px 0', paddingBottom: 14, borderBottom: '1px solid #eee' }}>
-                  <div><span style={{ color: '#e8a400' }}>{'★'.repeat(r.rating)}</span><span style={{ color: '#ccc' }}>{'★'.repeat(5 - r.rating)}</span> <b>{r.name}</b> <small style={{ color: '#888' }}>· підтверджена покупка</small></div>
+                  <div><span style={{ color: '#e8a400' }}>{'★'.repeat(r.rating)}</span><span style={{ color: '#ccc' }}>{'★'.repeat(5 - r.rating)}</span> <b>{r.name}</b> {r.verified && <small style={{ color: '#888' }}>· підтверджена покупка</small>}</div>
                   {r.text && <p style={{ margin: '6px 0 0', whiteSpace: 'pre-line' }}>{r.text}</p>}
                 </div>
               ))}
@@ -91,6 +92,8 @@ export default async function Page({ params }) {
               }) }} />
             </section>
           )}
+
+          <ReviewBox productId={p.id} />
 
           <ul className="trust">
             <li><i>₴</i><div><b>Оплата карткою онлайн</b>Через monobank. Дані картки нам не передаються.</div></li>

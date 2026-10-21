@@ -28,3 +28,10 @@ begin
 end; $$;
 revoke all on function market.run_review_requests() from public, anon, authenticated;
 select cron.schedule('review-requests-daily', '0 7 * * *', 'select market.run_review_requests();');
+
+-- Відкрита форма відгуку на сторінці товару: відгук без замовлення, позначка verified, анти-спам по IP-хешу.
+alter table market.reviews alter column order_id drop not null;
+alter table market.reviews add column if not exists verified boolean not null default false;
+alter table market.reviews add column if not exists ip_hash text;
+update market.reviews set verified = true where order_id is not null;
+create index if not exists reviews_ip_recent on market.reviews (ip_hash, created_at desc);

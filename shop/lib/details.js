@@ -41,7 +41,7 @@ export function detailsRow(id, item) {
 export async function getApprovedReviews(productId) {
   try {
     const res = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/reviews?product_id=eq.${encodeURIComponent(productId)}&approved=is.true&select=rating,name,text,created_at&order=created_at.desc&limit=50`,
+      `${process.env.SUPABASE_URL}/rest/v1/reviews?product_id=eq.${encodeURIComponent(productId)}&approved=is.true&select=rating,name,text,verified,created_at&order=created_at.desc&limit=50`,
       { headers: sb(), next: { revalidate: 300 } }
     );
     const rows = await res.json();
