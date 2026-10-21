@@ -1,6 +1,6 @@
 import data from '../data/products.json';
 import Catalog from './Catalog';
-import { GROUPS, groupOf, typeOf, typeRank } from '../lib/groups';
+import { GROUPS, groupOf, typeOf, typeRank, typeRow } from '../lib/groups';
 import HeroCategories from './HeroCategories';
 import { retailPrice } from '../lib/pricing';
 import { getFreshPrices, withFresh } from '../lib/prices';
@@ -30,10 +30,12 @@ export default async function Page() {
     group: g,
     image: imageOf.get(g),
     count: counts.get(g),
-    types: [...(typesOf.get(g) || [])]
-      .sort((a, b) => typeRank(g, a[0]) - typeRank(g, b[0]) || b[1].count - a[1].count)
-      .slice(0, 24)
-      .map(([name, t]) => ({ name, image: t.image, count: t.count })),
+    types: (() => {
+      const list = [...(typesOf.get(g) || [])]
+        .sort((a, b) => typeRank(g, a[0]) - typeRank(g, b[0]) || b[1].count - a[1].count)
+        .slice(0, 24);
+      return list.map(([name, t], i) => ({ name, image: t.image, count: t.count, row: typeRow(g, name, i, list.length) }));
+    })(),
   }));
   return (
     <>

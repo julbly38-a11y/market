@@ -48,7 +48,7 @@ export default function HeroCategories({ items }) {
               {open && (
                 <div className="sub-scroll" ref={sub}>
                   {c.types.map((t) => (
-                    <a key={t.name} className="cat-card sub" href={href(c.group, t.name)}>
+                    <a key={t.name} className="cat-card sub" style={{ gridRow: t.row }} href={href(c.group, t.name)}>
                       <img src={t.image} alt="" />
                       <span className="cat-info">
                         <span className="cat-name">{t.name}</span>
@@ -56,7 +56,7 @@ export default function HeroCategories({ items }) {
                       </span>
                     </a>
                   ))}
-                  <a className="cat-card sub more-card" href={href(c.group)}>
+                  <a className="cat-card sub more-card" style={{ gridRow: 2 }} href={href(c.group)}>
                     <span className="more-arrow">→</span>
                     <span className="cat-name">Усі товари розділу</span>
                   </a>
