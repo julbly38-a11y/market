@@ -2,6 +2,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { SITE_BASE } from '../lib/site';
 import { getMenu } from '../lib/menu';
+import MegaScroller from './MegaScroller';
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'], display: 'swap', variable: '--font' });
 
@@ -35,14 +36,17 @@ export default function RootLayout({ children }) {
             <nav className="nav" aria-label="Головне меню">
               <div className="nav-item">
                 <a href="/?g=all#catalog" className="nav-chip">Каталог</a>
-                <div className="mega mega-groups">
+                <div className="mega">
                   <div className="wrap mega-in">
-                    <h4>Усі категорії</h4>
-                    <ul>
-                      {menu.groups.map((g) => (
-                        <li key={g.group}><a href={`/?g=${encodeURIComponent(g.group)}#catalog`}>{g.group} <em>{g.total}</em></a></li>
-                      ))}
-                    </ul>
+                    <div className="mega-list">
+                      <h4>Усі категорії</h4>
+                      <ul>
+                        {menu.groups.map((g) => (
+                          <li key={g.group}><a href={`/?g=${encodeURIComponent(g.group)}#catalog`}>{g.group} <em>{g.total}</em></a></li>
+                        ))}
+                      </ul>
+                    </div>
+                    <MegaScroller items={menu.groups.map((g) => ({ href: `/?g=${encodeURIComponent(g.group)}#catalog`, name: g.group, image: g.image }))} />
                   </div>
                 </div>
               </div>
@@ -51,13 +55,16 @@ export default function RootLayout({ children }) {
                   <a href={`/?g=${encodeURIComponent(sec.group)}#catalog`}>{sec.label}</a>
                   <div className="mega">
                     <div className="wrap mega-in">
-                      <h4>{sec.group}</h4>
-                      <ul>
-                        {sec.categories.map((c) => (
-                          <li key={c.name}><a href={`/?g=${encodeURIComponent(sec.group)}&c=${encodeURIComponent(c.name)}#catalog`}>{c.name} <em>{c.count}</em></a></li>
-                        ))}
-                      </ul>
-                      <a className="mega-all" href={`/?g=${encodeURIComponent(sec.group)}#catalog`}>Усі товари розділу →</a>
+                      <div className="mega-list">
+                        <h4>{sec.group}</h4>
+                        <ul>
+                          {sec.categories.map((c) => (
+                            <li key={c.name}><a href={`/?g=${encodeURIComponent(sec.group)}&c=${encodeURIComponent(c.name)}#catalog`}>{c.name} <em>{c.count}</em></a></li>
+                          ))}
+                        </ul>
+                        <a className="mega-all" href={`/?g=${encodeURIComponent(sec.group)}#catalog`}>Усі товари розділу →</a>
+                      </div>
+                      <MegaScroller items={sec.categories.map((c) => ({ href: `/?g=${encodeURIComponent(sec.group)}&c=${encodeURIComponent(c.name)}#catalog`, name: c.name, image: c.image }))} />
                     </div>
                   </div>
                 </div>
