@@ -63,77 +63,107 @@ export default function Catalog({ products, vendors }) {
     setLimit(PAGE);
   };
 
+  // ?g=<тип товарів> з меню шапки
+  useEffect(() => {
+    const g = new URLSearchParams(window.location.search).get('g');
+    if (g && GROUPS.includes(g)) {
+      setGroup(g);
+      setCategory('all');
+    }
+  }, []);
+
+  const groupBtn = (g, label, n) => (
+    <button key={g} className={`side-link${group === g ? ' on' : ''}`} onClick={() => pickGroup(g)}>
+      <span>{label}</span>
+      <em>{n}</em>
+    </button>
+  );
+
   return (
     <>
-      <div className="chips" role="tablist" aria-label="Типи товарів">
-        <button className={`chip${group === 'all' ? ' on' : ''}`} onClick={() => pickGroup('all')}>
-          Усі товари <em>{money.format(products.length)}</em>
-        </button>
-        {GROUPS.filter((g) => groupCounts.has(g)).map((g) => (
-          <button key={g} className={`chip${group === g ? ' on' : ''}`} onClick={() => pickGroup(g)}>
-            {g} <em>{groupCounts.get(g)}</em>
-          </button>
-        ))}
+      <div id="catalog" className="shop">
+        <aside className="side">
+          <h2 className="side-title">Категорії</h2>
+          <nav className="side-groups" aria-label="Типи товарів">
+            {groupBtn('all', 'Усі товари', money.format(products.length))}
+            {GROUPS.filter((g) => groupCounts.has(g)).map((g) => groupBtn(g, g, groupCounts.get(g)))}
+          </nav>
+
+          <h2 className="side-title">Фільтри</h2>
+          <section className="filters">
+            <input type="search" placeholder="Пошук за назвою або артикулом" value={q} onChange={reset(setQ)} aria-label="Пошук" />
+            <select value={vendor} onChange={(e) => { setVendor(e.target.value); setCategory('all'); setLimit(PAGE); }} aria-label="Постачальник">
+              <option value="all">Усі постачальники</option>
+              {vendors.map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+            <select value={category} onChange={reset(setCategory)} aria-label="Підкатегорія">
+              <option value="all">Усі підкатегорії</option>
+              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <div className="price-range">
+              <input type="number" min="0" inputMode="numeric" placeholder="Ціна від" value={minP} onChange={reset(setMinP)} aria-label="Ціна від" />
+              <input type="number" min="0" inputMode="numeric" placeholder="до" value={maxP} onChange={reset(setMaxP)} aria-label="Ціна до" />
+            </div>
+            <label className="check">
+              <input type="checkbox" checked={inStock} onChange={reset(setInStock)} /> Лише в наявності
+            </label>
+          </section>
+        </aside>
+
+        <div className="results">
+          <div className="chips" role="tablist" aria-label="Типи товарів">
+            <button className={`chip${group === 'all' ? ' on' : ''}`} onClick={() => pickGroup('all')}>
+              Усі <em>{money.format(products.length)}</em>
+            </button>
+            {GROUPS.filter((g) => groupCounts.has(g)).map((g) => (
+              <button key={g} className={`chip${group === g ? ' on' : ''}`} onClick={() => pickGroup(g)}>
+                {g} <em>{groupCounts.get(g)}</em>
+              </button>
+            ))}
+          </div>
+
+          <div className="toolbar">
+            <p className="count">Товарів: {money.format(filtered.length)}</p>
+            <label className="sort">
+              <span>Сортування</span>
+              <select value={sort} onChange={reset(setSort)} aria-label="Сортування">
+                <option value="category">За типами товарів</option>
+                <option value="price_asc">Ціна: від дешевих</option>
+                <option value="price_desc">Ціна: від дорогих</option>
+              </select>
+            </label>
+          </div>
+
+          <section className="grid">
+            {filtered.length === 0 && <p className="empty">Нічого не знайдено. Спробуйте змінити пошук або фільтри.</p>}
+            {filtered.slice(0, limit).map((p, i, list) => (
+              <Fragment key={p.id}>
+                {sort === 'category' && group === 'all' && (i === 0 || list[i - 1].group !== p.group) && <h3 className="cat-head">{p.group}</h3>}
+                <article className="card">
+                  <a className="media" href={`/p/${p.id}`} aria-label={p.title}>
+                    <img src={p.image} alt="" loading="lazy" />
+                    {p.stock < 1 && <span className="tag out">&gt; Немає в наявності</span>}
+                    {p.stock > 0 && p.stock <= 3 && <span className="tag">&gt; Залишилось {p.stock}</span>}
+                  </a>
+                  <div className="body">
+                    <h2><a href={`/p/${p.id}`}>{p.title}</a></h2>
+                    <div className="vendor">{p.category.trim()}</div>
+                    <div className="price">{money.format(p.price)} ₴</div>
+                  </div>
+                </article>
+              </Fragment>
+            ))}
+          </section>
+
+          {limit < filtered.length && (
+            <div className="more">
+              <button onClick={() => setLimit(limit + PAGE)}>Показати ще</button>
+            </div>
+          )}
+        </div>
       </div>
 
-      <section className="filters">
-        <input type="search" placeholder="Пошук за назвою або артикулом" value={q} onChange={reset(setQ)} aria-label="Пошук" />
-        <select value={vendor} onChange={(e) => { setVendor(e.target.value); setCategory('all'); setLimit(PAGE); }} aria-label="Постачальник">
-          <option value="all">Усі постачальники</option>
-          {vendors.map((v) => <option key={v} value={v}>{v}</option>)}
-        </select>
-        <select value={category} onChange={reset(setCategory)} aria-label="Підкатегорія">
-          <option value="all">Усі підкатегорії</option>
-          {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={sort} onChange={reset(setSort)} aria-label="Сортування">
-          <option value="category">За типами товарів</option>
-          <option value="price_asc">Ціна: від дешевих</option>
-          <option value="price_desc">Ціна: від дорогих</option>
-        </select>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input type="number" min="0" inputMode="numeric" placeholder="Ціна від" value={minP} onChange={reset(setMinP)} aria-label="Ціна від" style={{ width: '100%', height: 44, padding: '0 12px', border: '1px solid var(--line-strong)', borderRadius: 'var(--radius-sm)', font: 'inherit' }} />
-          <input type="number" min="0" inputMode="numeric" placeholder="до" value={maxP} onChange={reset(setMaxP)} aria-label="Ціна до" style={{ width: '100%', height: 44, padding: '0 12px', border: '1px solid var(--line-strong)', borderRadius: 'var(--radius-sm)', font: 'inherit' }} />
-        </div>
-        <label className="check">
-          <input type="checkbox" checked={inStock} onChange={reset(setInStock)} /> Лише в наявності
-        </label>
-      </section>
-
-      <p className="count">{money.format(filtered.length)} {filtered.length === 1 ? 'товар' : 'товарів'}</p>
-
-      <section className="grid">
-        {filtered.length === 0 && <p className="empty">Нічого не знайдено. Спробуйте змінити пошук або фільтри.</p>}
-        {filtered.slice(0, limit).map((p, i, list) => (
-          <Fragment key={p.id}>
-            {sort === 'category' && group === 'all' && (i === 0 || list[i - 1].group !== p.group) && <h3 className="cat-head">{p.group}</h3>}
-            <article className="card">
-              <a className="media" href={`/p/${p.id}`} aria-label={p.title}>
-                <img src={p.image} alt="" loading="lazy" />
-                {p.stock < 1 && <span className="badge">Немає в наявності</span>}
-              </a>
-              <div className="body">
-                <div className="vendor">{p.category.trim()}</div>
-                <h2><a href={`/p/${p.id}`}>{p.title}</a></h2>
-                <div className="foot">
-                  <span className="price">{money.format(p.price)} ₴</span>
-                  <span className={p.stock > 0 ? 'stock ok' : 'stock'}>{p.stock > 0 ? 'в наявності' : 'немає'}</span>
-                </div>
-                <a className="buy" href={`/p/${p.id}`} aria-disabled={p.stock < 1} style={p.stock < 1 ? { pointerEvents: 'none', opacity: 0.5 } : undefined}>Замовити</a>
-              </div>
-            </article>
-          </Fragment>
-        ))}
-      </section>
-
       <PaidNotice />
-
-
-      {limit < filtered.length && (
-        <div className="more">
-          <button onClick={() => setLimit(limit + PAGE)}>Показати ще</button>
-        </div>
-      )}
     </>
   );
 }
