@@ -37,3 +37,6 @@ insert into market.sets (title, slug, description, vendor, discount_percent, boo
 ('BEZET Базовий: чорний', 'bezet-black-basic', 'Бюджетний комплект: штани TactDry, ремінь, флісова кофта Frostline, шапка й рукавиці.', 'BEZET', 0,
   null, '519817-4444383', '519817-3208545', '519817-4441676', null, null, '519817-3855122', null, '519817-3816209')
 on conflict (slug) do nothing;
+
+-- Набори рахуються як усі товари: без знижки (націнка та сама, що й на решту каталогу).
+update market.sets set discount_percent = 0 where discount_percent <> 0;
