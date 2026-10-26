@@ -4,7 +4,7 @@
 
 import { getClientInfo, getDetails, getPersonalStatement, getRates, getStatement } from '../../../lib/mono';
 import { sbListOrders } from '../../../lib/orders';
-import { FEE_PERCENT, MARKUP_PERCENT, TAX_PERCENT, breakEvenMarkupPercent } from '../../../lib/pricing';
+import { EFFECTIVE_MARKUP_PERCENT, FEE_PERCENT, MARKUP_PERCENT, MIN_PROFIT_PERCENT, TAX_PERCENT, breakEvenMarkupPercent } from '../../../lib/pricing';
 
 const uah = (kop) => Math.round(kop) / 100; // копійки → гривні (для балансу рахунку)
 
@@ -93,6 +93,8 @@ export async function GET(req) {
       rates,
       pricing: {
         markupPercent: MARKUP_PERCENT,
+        minProfitPercent: MIN_PROFIT_PERCENT,
+        effectiveMarkupPercent: Math.round(EFFECTIVE_MARKUP_PERCENT * 100) / 100,
         taxPercent: TAX_PERCENT,
         feePercent: FEE_PERCENT,
         breakEvenMarkupPercent: breakEvenMarkupPercent(),
