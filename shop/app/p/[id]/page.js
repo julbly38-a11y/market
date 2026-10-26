@@ -81,46 +81,46 @@ export default async function Page({ params }) {
           <h1>{p.title}</h1>
           <div className="p-price">{money.format(p.price)} ₴</div>
 
+          <ul className="trust compact">
+            <li><i>₴</i><div><b>Оплата карткою або при отриманні</b>Через monobank, дані картки нам не передаються</div></li>
+            <li><i>→</i><div><b>Нова Пошта</b>Відправляємо після підтвердження замовлення</div></li>
+            <li><i>↺</i><div><b>Повернення 14 днів</b><a href="/povernennya">Умови</a></div></li>
+          </ul>
+
           <div className="p-card">
             <h2>Оформити замовлення</h2>
             <ProductBuy product={{ id: p.id, title: p.title, price: p.price, stock: p.stock, vendor: p.vendor, sizes }} />
           </div>
-
-          {details?.description && (
-            <section style={{ margin: '24px 0' }}>
-              <h2 style={{ fontSize: '1.1rem' }}>Опис</h2>
-              <p style={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>{details.description}</p>
-            </section>
-          )}
-          {details?.size_chart && (
-            <section style={{ margin: '24px 0' }}>
-              <h2 style={{ fontSize: '1.1rem' }}>Таблиця розмірів</h2>
-              <img src={details.size_chart} alt="Таблиця розмірів" style={{ maxWidth: '100%' }} />
-            </section>
-          )}
-
-          {reviews.length > 0 && (
-            <section style={{ margin: '24px 0' }}>
-              <h2 style={{ fontSize: '1.1rem' }}>
-                Відгуки <span style={{ color: '#e8a400' }}>★</span> {avg.toFixed(1)} ({reviews.length})
-              </h2>
-              {reviews.map((r, i) => (
-                <div key={i} style={{ margin: '14px 0', paddingBottom: 14, borderBottom: '1px solid #eee' }}>
-                  <div><span style={{ color: '#e8a400' }}>{'★'.repeat(r.rating)}</span><span style={{ color: '#ccc' }}>{'★'.repeat(5 - r.rating)}</span> <b>{r.name}</b> {r.verified && <small style={{ color: '#888' }}>· підтверджена покупка</small>}</div>
-                  {r.text && <p style={{ margin: '6px 0 0', whiteSpace: 'pre-line' }}>{r.text}</p>}
-                </div>
-              ))}
-            </section>
-          )}
-
-          <ReviewBox productId={p.id} />
-
-          <ul className="trust">
-            <li><i>₴</i><div><b>Оплата карткою онлайн</b>Через monobank. Дані картки нам не передаються.</div></li>
-            <li><i>→</i><div><b>Доставка Новою Поштою</b>Відправляємо зі складу постачальника після підтвердження оплати.</div></li>
-            <li><i>↺</i><div><b>Повернення 14 днів</b>Товар належної якості можна повернути за законом. <a href="/povernennya">Умови</a></div></li>
-          </ul>
         </div>
+      </div>
+
+      <div className="p-extra">
+        {details?.description && (
+          <section className="p-sec">
+            <h2>Опис</h2>
+            <p className="p-text">{details.description}</p>
+          </section>
+        )}
+        {details?.size_chart && (
+          <section className="p-sec">
+            <h2>Таблиця розмірів</h2>
+            <img src={details.size_chart} alt="Таблиця розмірів" style={{ maxWidth: '100%' }} />
+          </section>
+        )}
+        {reviews.length > 0 && (
+          <section className="p-sec">
+            <h2>Відгуки <span className="stars">★</span> {avg.toFixed(1)} <span className="dim-count">({reviews.length})</span></h2>
+            {reviews.map((r, i) => (
+              <div key={i} className="review">
+                <div><span className="stars">{'★'.repeat(r.rating)}</span><span className="stars off">{'★'.repeat(5 - r.rating)}</span> <b>{r.name}</b> {r.verified && <small className="verified">підтверджена покупка</small>}</div>
+                {r.text && <p>{r.text}</p>}
+              </div>
+            ))}
+          </section>
+        )}
+        <section className="p-sec">
+          <ReviewBox productId={p.id} />
+        </section>
       </div>
     </main>
   );

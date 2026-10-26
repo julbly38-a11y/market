@@ -145,14 +145,14 @@ export function OrderForm({ product, inline = false, onClose, extra = null, bloc
       {sizes.length > 0 && (
         <div className="field">
           <label>Розмір</label>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="sizes-row">
             {sizes.map((z) => (
               <button
                 key={z.title}
                 type="button"
                 disabled={z.stock < 1}
+                className={`size${f.size === z.title ? ' on' : ''}`}
                 onClick={() => setF((x) => ({ ...x, size: z.title, qty: 1 }))}
-                style={{ minWidth: 48, padding: '8px 12px', borderRadius: 8, border: f.size === z.title ? '2px solid #1f1f1f' : '1px solid #ccc', background: f.size === z.title ? '#1f1f1f' : '#fff', color: f.size === z.title ? '#fff' : z.stock < 1 ? '#aaa' : '#1f1f1f', textDecoration: z.stock < 1 ? 'line-through' : 'none', cursor: z.stock < 1 ? 'not-allowed' : 'pointer' }}
               >
                 {z.title}
               </button>
