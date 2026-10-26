@@ -88,6 +88,13 @@ export default function RootLayout({ children }) {
                 <a href="/konfidentsiynist">Політика конфіденційності</a>
               </div>
               <div>
+                <h4>Партнерам</h4>
+                <a href="https://mydrop.com.ua/dropshipper?p=15282c" target="_blank" rel="sponsored noopener nofollow">MyDrop для дропшиперів (−2 € на першу підписку)</a>
+                <a href="https://mydrop.com.ua/vendor?p=15282c" target="_blank" rel="sponsored noopener nofollow">MyDrop для постачальників (−7 €)</a>
+                <a href="https://mydrop.com.ua/?p=15282c" target="_blank" rel="sponsored noopener nofollow">MyDrop: CRM для дропшипінгу</a>
+                <small className="partner-note">Партнерські посилання: ми можемо отримати винагороду.</small>
+              </div>
+              <div>
                 <h4>Оплата</h4>
                 <p>Карткою онлайн через monobank (mono pay). Дані картки нам не передаються.</p>
               </div>
