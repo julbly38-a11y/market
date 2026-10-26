@@ -80,6 +80,8 @@ npm install
 npm run dev        # http://localhost:3020
 ```
 
+Класифікація товарів (група → тип) рахується за назвою, категорією й **описом**: `node --env-file=../.env scripts/classify.mjs` пише `shop/data/classification.json`; правила в `shop/lib/taxonomy.mjs` (поза військовими групами) і `shop/lib/groups-legacy.mjs` (військові групи). Перезапускати після оновлення каталогу.
+
 Команди: `npm run build`, `npm run start`, `npm run sync` (оновити знімок каталогу), `node --env-file=../.env scripts/sync-details.mjs` (описи, фото, розміри).
 
 ## Деплой

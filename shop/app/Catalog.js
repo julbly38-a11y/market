@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { GROUPS, typeRank } from '../lib/groups';
+import { GROUPS, typeRank } from '../lib/groups-legacy.mjs';
 import { money } from './OrderForm';
 
 const PAGE = 48;
