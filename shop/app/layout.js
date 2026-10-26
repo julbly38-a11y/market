@@ -50,7 +50,6 @@ export default function RootLayout({ children }) {
                   </div>
                 </div>
               </div>
-              <div className="nav-item"><a href="/nabory">Набори</a></div>
               {menu.sections.map((sec) => (
                 <div className="nav-item" key={sec.group}>
                   <a href={`/?g=${encodeURIComponent(sec.group)}#catalog`}>{sec.label}</a>
