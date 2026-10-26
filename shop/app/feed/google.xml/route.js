@@ -1,9 +1,8 @@
 // Фід товарів для Google Merchant Center (RSS 2.0, простір імен g:). Лише товари в наявності, ціна — жива (market.supplier_prices).
 // У Merchant Center: Продукти → Фіди → додати фід за URL <сайт>/feed/google.xml, країна Україна, мова українська.
 import data from '../../../data/products.json';
-import { retailPrice } from '../../../lib/pricing';
 import { groupOf, typeOf } from '../../../lib/groups';
-import { getFreshPrices } from '../../../lib/prices';
+import { getFreshPrices, withFresh } from '../../../lib/prices';
 import { sb } from '../../../lib/orders';
 import { SITE_BASE } from '../../../lib/site';
 
@@ -31,11 +30,10 @@ export async function GET() {
   const base = SITE_BASE;
   const [fresh, details] = await Promise.all([getFreshPrices(), loadDetails()]);
   const items = [];
-  for (const p of data.products) {
-    const f = fresh.get(p.id);
-    const stock = f ? f.stock : p.stock;
-    if (stock < 1) continue;
-    const price = retailPrice(f?.price || p.price);
+  for (const raw of data.products) {
+    const p = withFresh(raw, fresh);
+    if (p.stock < 1) continue;
+    const price = p.price;
     const d = details.get(p.id);
     const images = d?.images?.length ? d.images : [p.image];
     const desc = (d?.description || p.title).replace(/\s+/g, ' ').trim().slice(0, 4900);

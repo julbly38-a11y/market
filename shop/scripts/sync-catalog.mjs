@@ -32,7 +32,8 @@ for (const dv of vendorsJson.results) {
       id: `${dv.id}-${p.id}`,
       sku: p.sku,
       title: p.title,
-      price: p.price,
+      price: p.price, // рекомендована роздрібна ціна (RRP)
+      drop: p.drop_price || null, // ціна закупівлі для дропшипера; порожня = собівартість невідома
       image: p.images[0].full_url,
       category: cats.get(p.category_id) || 'Інше',
       vendor: name,

@@ -18,7 +18,7 @@ export function getMenu() {
   for (const p of data.products) {
     const g = groupOf(p);
     totals.set(g, (totals.get(g) || 0) + 1);
-    if (p.stock < 1) continue;
+    if (p.stock < 1 || !(p.drop > 0)) continue;
     const m = byGroup.get(g) || new Map();
     const c = typeOf(p, g);
     if (p.image && !typeImg.has(`${g}|${c}`)) typeImg.set(`${g}|${c}`, p.image);

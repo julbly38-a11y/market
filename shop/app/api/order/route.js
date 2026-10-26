@@ -4,7 +4,7 @@
 //  3) картка: створюємо рахунок mono pay; накладений платіж: одразу чернетка MyDrop і лист власнику.
 // Чернетка MyDrop для оплати карткою створюється лише після підтвердженої оплати (див. /api/mono-webhook).
 
-import { retailPrice } from '../../../lib/pricing';
+import { sellPrice } from '../../../lib/pricing';
 import { getBranches } from '../../../lib/np';
 import { notifyCodOrder } from '../../../lib/notify';
 import { getProductDetails } from '../../../lib/details';
@@ -27,7 +27,8 @@ async function buildSingle(b) {
     return fail('price_unavailable', 502);
   }
   if (!live || !live.price) return fail('price_unavailable', 502);
-  const price = retailPrice(live.price);
+  const price = sellPrice(live.price, live.drop);
+  if (price == null) return fail('no_cost'); // закупівля невідома: товар не продаємо
   if (!Number.isInteger(qty) || qty < 1 || qty > Math.max(live.stock, 1)) return fail('bad_qty');
 
   const details = await getProductDetails(catalogItem.id, { fresh: true });
@@ -42,7 +43,7 @@ async function buildSingle(b) {
     total,
     record: {
       category: catalogItem.category, sku: catalogItem.sku, product_name: catalogItem.title,
-      unit_price: price, supplier_price: live.price, qty, size: size || null,
+      unit_price: price, supplier_price: live.drop, qty, size: size || null,
     },
     basket: [{ name: catalogItem.title, qty, sum: price * 100, code: String(catalogItem.sku) }],
   };
@@ -69,6 +70,8 @@ async function buildSet(b) {
     }
     if (!live || !live.price) return fail('price_unavailable', 502);
     if (live.stock < 1) return fail('set_out_of_stock');
+    const sold = sellPrice(live.price, live.drop);
+    if (sold == null) return fail('no_cost');
     const details = await getProductDetails(id, { fresh: true });
     const sizes = details?.sizes || [];
     const size = String(chosen[slot] || '').trim();
@@ -76,9 +79,9 @@ async function buildSet(b) {
       const z = sizes.find((x) => x.title === size);
       if (!z || z.stock < 1) return fail('bad_size');
     }
-    const price = salePrice(retailPrice(live.price), row.discount_percent);
-    supplier += live.price;
-    items.push({ slot, label, id, title: p.title, sku: p.sku, vendor: p.vendor, size: size || null, price, supplier_price: live.price });
+    const price = salePrice(sold, row.discount_percent);
+    supplier += live.drop;
+    items.push({ slot, label, id, title: p.title, sku: p.sku, vendor: p.vendor, size: size || null, price, supplier_price: live.drop });
   }
   if (!items.length) return fail('unknown_set');
   const total = items.reduce((s, i) => s + i.price, 0);

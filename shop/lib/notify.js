@@ -9,6 +9,14 @@ const itemsHtml = (order) =>
     ? `<p><b>${esc(order.product_name)}</b> = <b>${esc(order.total)} ₴</b></p><ul>${order.items.map((i) => `<li>${esc(i.label)}: ${esc(i.title)}${i.size ? `, розмір ${esc(i.size)}` : ''} (арт. ${esc(i.sku)}) — ${esc(i.price)} ₴</li>`).join('')}</ul>`
     : `<p>${esc(order.product_name)} (арт. ${esc(order.sku)})${order.size ? `, розмір ${esc(order.size)}` : ''} × ${esc(order.qty)} = <b>${esc(order.total)} ₴</b></p>`;
 
+// Скільки переказати постачальнику (сума закупівлі, drop_price) і нагадування про фото оплати.
+const supplierHtml = (order) => {
+  const sum = Number(order.supplier_price) || 0;
+  return sum > 0
+    ? `<p><b>До переказу постачальнику: ${esc(sum)} ₴</b> (закупівля за drop-цінами). Для BEZET, Oasis, Secret Shop при подачі прикріпіть фото оплати.</p>`
+    : '';
+};
+
 const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 
 export async function sendMail(subject, html) {
@@ -35,6 +43,7 @@ export async function notifyPaidOrder(order, mydrop) {
 ${itemsHtml(order)}
 <p>${esc(order.customer_name)}, ${esc(order.phone)}<br>${esc(order.city)}</p>
 <p>${esc(draft)}. Подайте її постачальнику в кабінеті MyDrop.</p>
+${supplierHtml(order)}
 <p>Сторінка статусу для покупця: <a href="${esc(orderUrl(order.id))}">${esc(orderUrl(order.id))}</a></p>`;
   return sendMail(`Нове замовлення №${order.id} — ${order.total} ₴`, html);
 }
@@ -65,6 +74,7 @@ export async function notifyCodOrder(order, mydrop) {
 ${itemsHtml(order)}
 <p>${esc(order.customer_name)}, ${esc(order.phone)}<br>${esc(order.city)}</p>
 <p>${esc(draft)}.</p>
+${supplierHtml(order)}
 <p>Сторінка статусу для покупця: <a href="${esc(orderUrl(order.id))}">${esc(orderUrl(order.id))}</a></p>`;
   return sendMail(`Накладений платіж №${order.id} — ${order.total} ₴ (підтвердити)`, html);
 }

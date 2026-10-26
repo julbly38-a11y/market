@@ -1,6 +1,6 @@
 // Набори (комплекти) одягу: market.sets, слот = стовпець з id товару. Усі речі одного набору — від одного постачальника.
 import data from '../data/products.json';
-import { retailPrice } from './pricing';
+import { sellPrice } from './pricing';
 import { sb } from './orders';
 import { getFreshPrices } from './prices';
 
@@ -47,10 +47,10 @@ export async function resolveSet(row, fresh) {
     const p = byId.get(id);
     if (!p) return { ...row, items: [], total: 0, available: false };
     const f = fresh.get(id);
-    const retail = retailPrice(f?.price || p.price);
+    const retail = sellPrice(f?.price || p.price, f?.drop ?? p.drop);
     items.push({
       slot, label, id, title: p.title, image: p.image, sku: p.sku, vendor: p.vendor,
-      retail, price: salePrice(retail, row.discount_percent), stock: f ? f.stock : p.stock,
+      retail: retail ?? 0, price: retail == null ? 0 : salePrice(retail, row.discount_percent), stock: retail == null ? 0 : f ? f.stock : p.stock,
     });
   }
   const fullPrice = items.reduce((s, i) => s + i.retail, 0);

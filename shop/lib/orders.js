@@ -28,7 +28,8 @@ function loadVendorPrices(vendorId) {
     for (const p of json.products || []) {
       const stock = (p.sizes || []).reduce((sum, z) => sum + (z.real_count_dropshipper || 0), 0);
       items.set(String(p.id), {
-        price: p.price,
+        price: p.price, // RRP
+        drop: p.drop_price || null, // закупівля
         stock,
         // повні дані для market.product_details (їх оновлює моніторинг цін)
         description: p.description,

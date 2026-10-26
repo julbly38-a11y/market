@@ -2,7 +2,7 @@
 // Знімки лежать у market.supplier_prices / price_changes / competitor_prices. Запускається щодоби з
 // /api/cron/price-watch. Перший запуск лише фіксує базу, без листа про «зміни».
 
-import { retailPrice } from './pricing';
+import { sellPrice } from './pricing';
 import { PRODUCTS, getVendorPrices, sb } from './orders';
 import { sendMail } from './notify';
 import { detailsRow } from './details';
@@ -17,13 +17,13 @@ const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<'
 async function loadStored() {
   const map = new Map();
   for (let from = 0; ; from += 1000) {
-    const res = await fetch(url(`supplier_prices?select=product_id,price,stock,title&order=product_id&limit=1000&offset=${from}`), {
+    const res = await fetch(url(`supplier_prices?select=product_id,price,stock,title,drop_price&order=product_id&limit=1000&offset=${from}`), {
       headers: sb(),
       cache: 'no-store',
     });
     const rows = await res.json();
     if (!Array.isArray(rows)) throw new Error(`supplier_prices_read_failed: ${JSON.stringify(rows).slice(0, 150)}`);
-    for (const r of rows) map.set(r.product_id, { price: Number(r.price), stock: r.stock, hasTitle: !!r.title });
+    for (const r of rows) map.set(r.product_id, { price: Number(r.price), stock: r.stock, drop: r.drop_price == null ? null : Number(r.drop_price), hasTitle: !!r.title });
     if (rows.length < 1000) break;
   }
   return map;
@@ -66,12 +66,14 @@ async function watchSupplier(report) {
       if (!cur || !cur.price) continue;
       report.checked++;
       const prev = stored.get(id);
-      if (prev && prev.price === cur.price && prev.stock === cur.stock && prev.hasTitle) continue;
-      upserts.push({ product_id: id, title: p.title, price: cur.price, stock: cur.stock, checked_at: new Date().toISOString() });
-      if (prev && !baseline && (prev.price !== cur.price || prev.stock !== cur.stock)) {
+      const curDrop = cur.drop ?? null;
+      if (prev && prev.price === cur.price && prev.drop === curDrop && prev.stock === cur.stock && prev.hasTitle) continue;
+      upserts.push({ product_id: id, title: p.title, price: cur.price, drop_price: curDrop, stock: cur.stock, checked_at: new Date().toISOString() });
+      if (prev && !baseline && (prev.price !== cur.price || prev.drop !== curDrop || prev.stock !== cur.stock)) {
+        // «ціна» в журналі змін це закупівля (drop_price); якщо її нема — RRP
         changes.push({
-          product_id: id, title: p.title,
-          old_price: prev.price, new_price: cur.price, old_stock: prev.stock, new_stock: cur.stock,
+          product_id: id, title: p.title, rrp: cur.price, drop: curDrop,
+          old_price: prev.drop ?? prev.price, new_price: curDrop ?? cur.price, old_stock: prev.stock, new_stock: cur.stock,
         });
       }
     }
@@ -87,7 +89,7 @@ async function watchSupplier(report) {
   }
   if (upserts.length) await post('supplier_prices?on_conflict=product_id', upserts, 'resolution=merge-duplicates');
   const priceMoves = changes.filter((c) => c.old_price !== c.new_price || (c.old_stock > 0) !== (c.new_stock > 0));
-  if (priceMoves.length) await post('price_changes', priceMoves, 'return=minimal');
+  if (priceMoves.length) await post('price_changes', priceMoves.map(({ rrp, drop, ...row }) => row), 'return=minimal');
 
   Object.assign(report, { baseline, stored: upserts.length, changes: priceMoves.length });
   return priceMoves
@@ -138,7 +140,7 @@ async function watchCompetitors(report) {
     try {
       const vendorId = c.productId.split('-')[0];
       const live = (await getVendorPrices(vendorId).catch(() => null))?.get(c.productId.slice(vendorId.length + 1));
-      const ours = retailPrice(live?.price || p.price);
+      const ours = sellPrice(live?.price || p.price, live?.drop ?? p.drop) ?? p.price;
       const r = await fetchCompetitor(c.url);
       rows.push({ product_id: c.productId, url: c.url, seller: r.seller, price: r.price, availability: r.availability, our_price: ours });
       if (r.price && r.price < ours) cheaper.push({ title: p.title, ours, theirs: r.price, seller: r.seller, url: c.url, pct: ((ours - r.price) / ours) * 100 });
@@ -159,7 +161,7 @@ function buildMail(changes, cheaper, report) {
     html += `<h4>Постачальник: зміни закупівлі (${changes.length}${changes.length > MAX_ROWS_IN_MAIL ? `, показано ${MAX_ROWS_IN_MAIL}` : ''})</h4><ul>`;
     for (const c of changes.slice(0, MAX_ROWS_IN_MAIL)) {
       const note = c.wentOut ? ' — <b>немає в наявності</b>' : c.cameBack ? ' — знову в наявності' : '';
-      html += `<li>${esc(c.title.slice(0, 70))}: ${money(c.old_price)} → <b>${money(c.new_price)}</b> (${c.pct >= 0 ? '+' : ''}${c.pct.toFixed(1)}%), на сайті тепер ${money(retailPrice(c.new_price))}${note}</li>`;
+      html += `<li>${esc(c.title.slice(0, 70))}: ${money(c.old_price)} → <b>${money(c.new_price)}</b> (${c.pct >= 0 ? '+' : ''}${c.pct.toFixed(1)}%), на сайті тепер ${sellPrice(c.rrp, c.drop) == null ? 'ціна невідома' : money(sellPrice(c.rrp, c.drop))}${note}</li>`;
     }
     html += '</ul>';
   }
