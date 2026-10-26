@@ -38,9 +38,10 @@ export async function POST(req) {
 
     await sbPatchOrder(order.id, { payment_status: 'paid', paid_at: new Date().toISOString(), status: 'new' });
 
-    const md = await createMydropDraft(order).catch((err) => ({ id: null, error: String(err) }));
+    const paidOrder = { ...order, payment_status: 'paid' }; // order прочитано до оплати
+    const md = await createMydropDraft(paidOrder).catch((err) => ({ id: null, error: String(err) }));
     await sbPatchOrder(order.id, { mydrop_order_id: md.id, mydrop_error: md.error });
-    await notifyPaidOrder(order, md);
+    await notifyPaidOrder(paidOrder, md);
 
     return json({ ok: true });
   } catch (err) {
