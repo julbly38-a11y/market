@@ -2,8 +2,8 @@
 // Коли зʼявляється ТТН, надсилає покупцю лист (якщо є верифікований домен) і власнику сповіщення.
 // Cron: Authorization: Bearer PRICE_WATCH_SECRET.
 
-import { orderUrl, sb } from '../../../../lib/orders';
-import { customerMailReady, sendCustomerMail, sendMail } from '../../../../lib/notify';
+import { sb } from '../../../../lib/orders';
+import { applyMydropOrder } from '../../../../lib/ordersync';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,28 +29,9 @@ export async function GET(req) {
       if (!r.ok) { report.errors.push(`order ${o.id}: mydrop_http_${r.status}`); continue; }
       const m = await r.json();
       report.checked++;
-      const ttn = m.ttn ? String(m.ttn) : null;
-      const patch = {};
-      if (ttn && ttn !== o.ttn) patch.ttn = ttn;
-      const status = m.orderStatus?.title || null;
-      if (status && status !== o.mydrop_status) patch.mydrop_status = status;
-      const delivery = m.ttnTextStatus || m.deliveryStatus || null;
-      if (delivery && delivery !== o.delivery_status) patch.delivery_status = String(delivery);
-      if (!Object.keys(patch).length) continue;
-
-      if (patch.ttn && !o.ttn_notified_at) {
-        let sent = false;
-        const link = orderUrl(o.id);
-        if (customerMailReady() && o.email) {
-          sent = !!(await sendCustomerMail(o.email, `Замовлення №${o.id} відправлено`,
-            `<p>Ваше замовлення відправлено Новою Поштою.</p><p>Номер ТТН: <b>${ttn}</b></p><p><a href="${link}">Статус замовлення</a></p>`)).ok;
-        }
-        await sendMail(`ТТН по замовленню №${o.id}: ${ttn}`, `<p>Постачальник відправив замовлення №${o.id}. ТТН: <b>${ttn}</b>.${sent ? ' Покупцю надіслано лист.' : ' Лист покупцю не надіслано (немає email або домену).'}</p>`);
-        patch.ttn_notified_at = new Date().toISOString();
-        report.ttn++;
-      }
-      await fetch(`${process.env.SUPABASE_URL}/rest/v1/orders?id=eq.${o.id}`, { method: 'PATCH', headers: sb(), body: JSON.stringify(patch) });
-      report.updated++;
+      const r2 = await applyMydropOrder(o, m);
+      if (r2.updated) report.updated++;
+      if (r2.ttn) report.ttn++;
     } catch (err) {
       report.errors.push(`order ${o.id}: ${err.message}`);
     }
