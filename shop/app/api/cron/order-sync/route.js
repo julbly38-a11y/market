@@ -16,7 +16,7 @@ export async function GET(req) {
 
   const since = new Date(Date.now() - 45 * 86400_000).toISOString();
   const res = await fetch(
-    `${process.env.SUPABASE_URL}/rest/v1/orders?mydrop_order_id=not.is.null&created_at=gte.${encodeURIComponent(since)}&or=(ttn.is.null,delivery_status.is.null,delivery_status.neq.delivered)&select=id,email,customer_name,ttn,mydrop_status,delivery_status,ttn_notified_at,mydrop_order_id&order=id&limit=100`,
+    `${process.env.SUPABASE_URL}/rest/v1/orders?mydrop_order_id=not.is.null&created_at=gte.${encodeURIComponent(since)}&or=(ttn.is.null,delivery_status.is.null,delivery_status.neq.delivered)&select=id,email,customer_name,ttn,mydrop_status,delivery_status,ttn_notified_at,mydrop_submitted,mydrop_order_id&order=id&limit=100`,
     { headers: sb(), cache: 'no-store' }
   );
   const orders = await res.json();

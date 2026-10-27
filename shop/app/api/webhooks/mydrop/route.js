@@ -38,7 +38,7 @@ export async function POST(req) {
 
   try {
     const res = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/orders?mydrop_order_id=eq.${encodeURIComponent(String(m.id))}&select=id,email,customer_name,ttn,mydrop_status,delivery_status,ttn_notified_at&limit=1`,
+      `${process.env.SUPABASE_URL}/rest/v1/orders?mydrop_order_id=eq.${encodeURIComponent(String(m.id))}&select=id,email,customer_name,ttn,mydrop_status,delivery_status,ttn_notified_at,mydrop_submitted&limit=1`,
       { headers: sb(), cache: 'no-store' }
     );
     const rows = await res.json();

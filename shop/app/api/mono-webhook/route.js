@@ -48,7 +48,7 @@ export async function POST(req) {
       if (sub.error) md.error = sub.error;
       if (sub.ttn) md.ttn = sub.ttn;
     }
-    await sbPatchOrder(order.id, { mydrop_order_id: md.id, mydrop_error: md.error, ...(md.ttn ? { ttn: md.ttn } : {}) });
+    await sbPatchOrder(order.id, { mydrop_order_id: md.id, mydrop_error: md.error, mydrop_submitted: !!md.submitted, ...(md.ttn ? { ttn: md.ttn } : {}) });
     await notifyPaidOrder(paidOrder, md);
 
     return json({ ok: true });

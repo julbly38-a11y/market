@@ -14,6 +14,7 @@ export async function applyMydropOrder(o, m) {
   if (status && status !== o.mydrop_status) patch.mydrop_status = status;
   const delivery = m.ttnTextStatus || m.deliveryStatus || null;
   if (delivery && delivery !== o.delivery_status) patch.delivery_status = String(delivery);
+  if (m.submitted === true && !o.mydrop_submitted) patch.mydrop_submitted = true; // подано вручну в кабінеті або автоподачею
   if (!Object.keys(patch).length) return { updated: false, ttn: false };
 
   let newTtn = false;
