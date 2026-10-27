@@ -68,9 +68,14 @@ export async function sendCustomerMail(to, subject, html) {
 }
 
 export async function notifyCodOrder(order, mydrop) {
-  const draft = mydrop?.id ? `чернетка MyDrop №${mydrop.id}` : `⚠️ чернетку MyDrop не створено: ${mydrop?.error || 'невідомо'}`;
+  const draft = mydrop?.id
+    ? `${mydrop.submitted ? 'замовлення MyDrop' : 'чернетка MyDrop'} №${mydrop.id}${!mydrop.submitted && mydrop.error ? `, ⚠️ автоподача не вдалась: ${mydrop.error}` : ''}`
+    : `⚠️ чернетку MyDrop не створено: ${mydrop?.error || 'невідомо'}`;
+  const action = mydrop?.submitted
+    ? `<b>Не оплачено.</b> Замовлення вже <b>подано постачальнику автоматично</b> (накладений платіж <b>${esc(order.total)} ₴</b>). Зателефонуйте покупцеві; якщо він не підтвердить, скасуйте замовлення в MyDrop до відправки.`
+    : `<b>Не оплачено.</b> Зателефонуйте покупцеві й підтвердіть замовлення, потім подайте чернетку постачальнику з накладеним платежем <b>${esc(order.total)} ₴</b> без передоплати.`;
   const html = `<h3>Замовлення НАКЛАДЕНИМ ПЛАТЕЖЕМ №${esc(order.id)}</h3>
-<p><b>Не оплачено.</b> Зателефонуйте покупцеві й підтвердіть замовлення, потім подайте чернетку постачальнику з накладеним платежем <b>${esc(order.total)} ₴</b> без передоплати.</p>
+<p>${action}</p>
 ${itemsHtml(order)}
 <p>${esc(order.customer_name)}, ${esc(order.phone)}<br>${esc(order.city)}</p>
 <p>${esc(draft)}.</p>

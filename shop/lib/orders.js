@@ -169,8 +169,26 @@ export async function createMydropDraft(order) {
     }),
   });
   const json = await res.json().catch(() => ({}));
-  if (res.ok) return { id: json.id ?? null, error: null };
+  if (res.ok) return { id: json.id ?? null, error: null, vendor: product?.vendor };
   return { id: null, error: json.message || json.reason || `mydrop_http_${res.status}` };
+}
+
+// Постачальники, яким накладений платіж подаємо автоматично (перевірено dry_run: без передоплати й скриншота).
+// AUTO_SUBMIT_VENDORS — назви через кому; порожнє значення вимикає автоподачу.
+export const autoSubmitVendors = () =>
+  (process.env.AUTO_SUBMIT_VENDORS ?? 'Oasis_Drop,Товарний Синдикат,Secret Shop').split(',').map((v) => v.trim()).filter(Boolean);
+
+// Подає чернетку постачальнику (після цього він сам створює ТТН). Повертає { submitted, ttn, error }.
+export async function submitMydropOrder(mydropId) {
+  const res = await fetch(`https://backend.mydrop.com.ua/dropshipper/api/orders/${mydropId}/submit`, {
+    method: 'POST',
+    headers: { 'X-API-KEY': process.env.MYDROP_API_KEY, 'Content-Type': 'application/json' },
+    body: '{}',
+  });
+  const json = await res.json().catch(() => ({}));
+  if (res.ok && json.submitted) return { submitted: true, ttn: json.order?.ttn || null, error: null };
+  const err = (json.errors || []).map((e) => e.code).join(', ') || json.code || json.message || `mydrop_http_${res.status}`;
+  return { submitted: false, ttn: null, error: `submit: ${err}` };
 }
 
 // Посилання на статус замовлення: /order/<id>-<токен>. Токен — HMAC від id, тож чужі замовлення не перебрати.
