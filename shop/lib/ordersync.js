@@ -14,7 +14,11 @@ export async function applyMydropOrder(o, m) {
   if (status && status !== o.mydrop_status) patch.mydrop_status = status;
   const delivery = m.ttnTextStatus || m.deliveryStatus || null;
   if (delivery && delivery !== o.delivery_status) patch.delivery_status = String(delivery);
-  if (m.submitted === true && !o.mydrop_submitted) patch.mydrop_submitted = true; // подано вручну в кабінеті або автоподачею
+  if (m.submitted === true && !o.mydrop_submitted) { // подано вручну в кабінеті або автоподачею
+    patch.mydrop_submitted = true;
+    if (!o.mydrop_submitted_at) patch.mydrop_submitted_at = new Date().toISOString();
+  }
+  if (patch.ttn && !o.ttn_at) patch.ttn_at = new Date().toISOString();
   if (!Object.keys(patch).length) return { updated: false, ttn: false };
 
   let newTtn = false;

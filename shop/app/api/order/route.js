@@ -168,7 +168,7 @@ export async function POST(req) {
       if (sub.error) md.error = sub.error;
       if (sub.ttn) md.ttn = sub.ttn;
     }
-    await sbPatchOrder(order.id, { mydrop_order_id: md.id, mydrop_error: md.error, mydrop_submitted: !!md.submitted, ...(md.ttn ? { ttn: md.ttn } : {}) });
+    await sbPatchOrder(order.id, { mydrop_order_id: md.id, mydrop_error: md.error, mydrop_submitted: !!md.submitted, mydrop_vendor: md.vendor || null, ...(md.submitted ? { mydrop_submitted_at: new Date().toISOString() } : {}), ...(md.ttn ? { ttn: md.ttn, ttn_at: new Date().toISOString() } : {}) });
     await notifyCodOrder(order, md);
     return Response.json({ ok: true, orderId: order.id, orderUrl: orderUrl(order.id) });
   }
