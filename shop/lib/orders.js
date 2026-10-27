@@ -180,8 +180,9 @@ export const autoSubmitVendors = () =>
 // Подає чернетку постачальнику (після цього він сам створює ТТН). Повертає { submitted, ttn, error }.
 // Постачальники, яким оплачені карткою замовлення подаємо з передоплатою з балансу MyDrop.
 // PREPAY_BALANCE_VENDORS — назви через кому; порожнє значення вимикає. Баланс поповнює постачальник.
+// Решта постачальників (BEZET, Oasis, Secret Shop) вимагають скриншот оплати: картка в них лишається ручною подачею (переказ + скриншот).
 export const prepayBalanceVendors = () =>
-  (process.env.PREPAY_BALANCE_VENDORS ?? 'Oasis_Drop,Товарний Синдикат,Secret Shop').split(',').map((v) => v.trim()).filter(Boolean);
+  (process.env.PREPAY_BALANCE_VENDORS ?? 'Товарний Синдикат').split(',').map((v) => v.trim()).filter(Boolean);
 
 // Постачальники, де просимо MyDrop створити ТТН при подачі (`generate_ttn: true`, модуль «Генерація ТТН»).
 // Працює лише якщо постачальник дозволив дропшиперу генерувати свою ТТН і в MyDrop додано контрагента Нової Пошти.
@@ -189,6 +190,24 @@ export const prepayBalanceVendors = () =>
 // Увага: з власною ТТН накладений платіж надходить на контрагента власника, а не постачальнику.
 export const generateTtnVendors = () =>
   (process.env.GENERATE_TTN_VENDORS ?? '').split(',').map((v) => v.trim()).filter(Boolean);
+
+// Умови передоплати постачальника з MyDrop: текст плашки (реквізити для переказу) і чи потрібен скриншот оплати.
+// Кеш на 10 хв; без ключа або при збої повертає null.
+let vendorInfoCache = { at: 0, map: null };
+export async function vendorPaymentInfo(vendorName) {
+  if (!vendorName || !process.env.MYDROP_API_KEY) return null;
+  try {
+    if (!vendorInfoCache.map || Date.now() - vendorInfoCache.at > 600_000) {
+      const res = await fetch(`${MYDROP_BASE}/dropshipper_vendors`, { headers: { 'X-API-KEY': process.env.MYDROP_API_KEY }, cache: 'no-store' });
+      if (!res.ok) return null;
+      const json = await res.json();
+      vendorInfoCache = { at: Date.now(), map: new Map((json.results || []).map((r) => [r.vendor?.name, { alert: r.vendor?.prepayAlertText || '', imageRequired: !!r.vendor?.dropshipperOrderImageRequired }])) };
+    }
+    return vendorInfoCache.map.get(vendorName) || null;
+  } catch {
+    return null;
+  }
+}
 
 // Що робити власнику при відмові подачі (коди помилок MyDrop). Йде в лист у notify.js.
 const SUBMIT_ERROR_HINTS = {

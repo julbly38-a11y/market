@@ -2,7 +2,7 @@
 // Потрібні RESEND_API_KEY і NOTIFY_EMAIL; без них нічого не робить. Помилка сповіщення не ламає вебхук.
 // NOTIFY_FROM — відправник (за замовчуванням тестовий onboarding@resend.dev; для свого домену треба верифікація в Resend).
 
-import { orderUrl, submitErrorHint } from './orders';
+import { orderUrl, submitErrorHint, vendorPaymentInfo } from './orders';
 
 // Причина невдалої автоподачі для листа власнику: код помилки й що з цим робити.
 const submitFailure = (error) => {
@@ -16,11 +16,19 @@ const itemsHtml = (order) =>
     : `<p>${esc(order.product_name)} (арт. ${esc(order.sku)})${order.size ? `, розмір ${esc(order.size)}` : ''} × ${esc(order.qty)} = <b>${esc(order.total)} ₴</b></p>`;
 
 // Скільки переказати постачальнику (сума закупівлі, drop_price) і нагадування про фото оплати.
-const supplierHtml = (order) => {
-  const sum = Number(order.supplier_price) || 0;
-  return sum > 0
-    ? `<p><b>До переказу постачальнику: ${esc(sum)} ₴</b> (закупівля за drop-цінами). Для BEZET, Oasis, Secret Shop при подачі прикріпіть фото оплати.</p>`
-    : '';
+// Ручна подача оплаченого карткою замовлення: що переказати, куди, і що прикріпити (скриншот оплати).
+const manualPaymentHtml = async (order, mydrop) => {
+  if (!mydrop?.id) return '';
+  const info = await vendorPaymentInfo(mydrop.vendor);
+  const draftLink = `https://mydrop.com.ua/dropshipper/orders/${mydrop.id}/edit`;
+  const unit = Number(order.supplier_price) || 0;
+  const sum = Array.isArray(order.items) && order.items.length ? unit : unit * (Number(order.qty) || 1);
+  return `<h4>Ручна подача${mydrop.vendor ? `: ${esc(mydrop.vendor)}` : ''}</h4>
+<ol>
+<li>Перекажіть постачальнику <b>${esc(sum)} ₴</b> (drop-ціна)${info?.alert ? `. Реквізити з кабінету MyDrop: <i>${esc(info.alert)}</i>` : ''}.</li>
+<li>${info?.imageRequired === false ? 'Скриншот оплати цей постачальник не вимагає, але прикріпити його можна.' : 'Зробіть скриншот переказу й прикріпіть його в полі «Прикріпити скриншот оплати».'}</li>
+<li>Відкрийте <a href="${esc(draftLink)}">чернетку №${esc(mydrop.id)}</a>, поставте «Повна передплата» (накладений платіж 0), додайте скриншот і натисніть «Подати замовлення».</li>
+</ol>`;
 };
 
 const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
@@ -54,9 +62,9 @@ export async function notifyPaidOrder(order, mydrop) {
 ${itemsHtml(order)}
 <p>${esc(order.customer_name)}, ${esc(order.phone)}<br>${esc(order.city)}</p>
 <p>${esc(draft)}. ${next}</p>
-${mydrop?.submitted ? '' : supplierHtml(order)}
+${mydrop?.submitted ? '' : await manualPaymentHtml(order, mydrop)}
 <p>Сторінка статусу для покупця: <a href="${esc(orderUrl(order.id))}">${esc(orderUrl(order.id))}</a></p>`;
-  return sendMail(`Нове замовлення №${order.id} — ${order.total} ₴`, html);
+  return sendMail(`Нове замовлення №${order.id} — ${order.total} ₴${mydrop?.submitted ? '' : ' (потрібна ручна подача)'}`, html);
 }
 
 // Лист покупцю: працює лише з верифікованого домену (NOTIFY_FROM не resend.dev), інакше Resend шле тільки власнику.
@@ -89,8 +97,7 @@ export async function notifyCodOrder(order, mydrop) {
 <p>${action}</p>
 ${itemsHtml(order)}
 <p>${esc(order.customer_name)}, ${esc(order.phone)}<br>${esc(order.city)}</p>
-<p>${esc(draft)}.</p>
-${supplierHtml(order)}
+<p>${esc(draft)}. Переказ постачальнику не потрібен: гроші збере він при отриманні, а вашу різницю виплатить через розділ «Виплати».</p>
 <p>Сторінка статусу для покупця: <a href="${esc(orderUrl(order.id))}">${esc(orderUrl(order.id))}</a></p>`;
   return sendMail(`Накладений платіж №${order.id} — ${order.total} ₴ (підтвердити)`, html);
 }
