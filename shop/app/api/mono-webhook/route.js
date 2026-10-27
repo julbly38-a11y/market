@@ -2,7 +2,7 @@
 // у monobank із нашим токеном, звіряємо reference і суму. Обробка ідемпотентна.
 // Додатково перевіряємо підпис X-Sign (ECDSA) — чужі запити відсіюються до будь-яких викликів.
 
-import { createMydropDraft, sbGetOrder, sbPatchOrder } from '../../../lib/orders';
+import { createMydropDraft, prepayBalanceVendors, sbGetOrder, sbPatchOrder, submitMydropOrder } from '../../../lib/orders';
 import { notifyPaidOrder } from '../../../lib/notify';
 import { getInvoiceStatus, verifyWebhookSign } from '../../../lib/mono';
 
@@ -40,7 +40,15 @@ export async function POST(req) {
 
     const paidOrder = { ...order, payment_status: 'paid' }; // order прочитано до оплати
     const md = await createMydropDraft(paidOrder).catch((err) => ({ id: null, error: String(err) }));
-    await sbPatchOrder(order.id, { mydrop_order_id: md.id, mydrop_error: md.error });
+    // Оплачено карткою: подаємо постачальнику з передоплатою з балансу MyDrop (покупець уже заплатив нам повну суму).
+    if (md.id && !Array.isArray(order.items) && prepayBalanceVendors().includes(md.vendor)) {
+      const sub = await submitMydropOrder(md.id, { prepay_amount: Number(order.total), prepay_from_balance: true })
+        .catch((err) => ({ submitted: false, error: `submit: ${err}` }));
+      md.submitted = sub.submitted;
+      if (sub.error) md.error = sub.error;
+      if (sub.ttn) md.ttn = sub.ttn;
+    }
+    await sbPatchOrder(order.id, { mydrop_order_id: md.id, mydrop_error: md.error, ...(md.ttn ? { ttn: md.ttn } : {}) });
     await notifyPaidOrder(paidOrder, md);
 
     return json({ ok: true });

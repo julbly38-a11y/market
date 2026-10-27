@@ -38,12 +38,17 @@ export async function sendMail(subject, html) {
 }
 
 export async function notifyPaidOrder(order, mydrop) {
-  const draft = mydrop?.id ? `чернетка MyDrop №${mydrop.id}` : `⚠️ чернетку MyDrop не створено: ${mydrop?.error || 'невідомо'}`;
+  const draft = mydrop?.id
+    ? `${mydrop.submitted ? 'замовлення MyDrop' : 'чернетка MyDrop'} №${mydrop.id}${!mydrop.submitted && mydrop.error ? `, ⚠️ автоподача не вдалась: ${mydrop.error}` : ''}`
+    : `⚠️ чернетку MyDrop не створено: ${mydrop?.error || 'невідомо'}`;
+  const next = mydrop?.submitted
+    ? 'Замовлення подано постачальнику автоматично, оплата списана з балансу MyDrop. ТТН створить постачальник.'
+    : 'Подайте її постачальнику в кабінеті MyDrop.';
   const html = `<h3>Оплачене замовлення №${esc(order.id)}</h3>
 ${itemsHtml(order)}
 <p>${esc(order.customer_name)}, ${esc(order.phone)}<br>${esc(order.city)}</p>
-<p>${esc(draft)}. Подайте її постачальнику в кабінеті MyDrop.</p>
-${supplierHtml(order)}
+<p>${esc(draft)}. ${next}</p>
+${mydrop?.submitted ? '' : supplierHtml(order)}
 <p>Сторінка статусу для покупця: <a href="${esc(orderUrl(order.id))}">${esc(orderUrl(order.id))}</a></p>`;
   return sendMail(`Нове замовлення №${order.id} — ${order.total} ₴`, html);
 }

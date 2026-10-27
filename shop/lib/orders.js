@@ -179,11 +179,16 @@ export const autoSubmitVendors = () =>
   (process.env.AUTO_SUBMIT_VENDORS ?? 'Oasis_Drop,Товарний Синдикат,Secret Shop').split(',').map((v) => v.trim()).filter(Boolean);
 
 // Подає чернетку постачальнику (після цього він сам створює ТТН). Повертає { submitted, ttn, error }.
-export async function submitMydropOrder(mydropId) {
+// Постачальники, яким оплачені карткою замовлення подаємо з передоплатою з балансу MyDrop.
+// PREPAY_BALANCE_VENDORS — назви через кому; порожнє значення вимикає. Баланс поповнює постачальник.
+export const prepayBalanceVendors = () =>
+  (process.env.PREPAY_BALANCE_VENDORS ?? 'Oasis_Drop,Товарний Синдикат,Secret Shop').split(',').map((v) => v.trim()).filter(Boolean);
+
+export async function submitMydropOrder(mydropId, fields = {}) {
   const res = await fetch(`https://backend.mydrop.com.ua/dropshipper/api/orders/${mydropId}/submit`, {
     method: 'POST',
     headers: { 'X-API-KEY': process.env.MYDROP_API_KEY, 'Content-Type': 'application/json' },
-    body: '{}',
+    body: JSON.stringify(fields),
   });
   const json = await res.json().catch(() => ({}));
   if (res.ok && json.submitted) return { submitted: true, ttn: json.order?.ttn || null, error: null };
