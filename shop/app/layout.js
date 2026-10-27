@@ -3,6 +3,7 @@ import './globals.css';
 import { SITE_BASE } from '../lib/site';
 import { getMenu } from '../lib/menu';
 import MegaScroller from './MegaScroller';
+import CartLink from './CartLink';
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'], display: 'swap', variable: '--font' });
 
@@ -70,6 +71,7 @@ export default function RootLayout({ children }) {
                 </div>
               ))}
             </nav>
+            <CartLink />
           </div>
         </header>
         {children}

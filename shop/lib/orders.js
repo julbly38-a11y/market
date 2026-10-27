@@ -113,6 +113,13 @@ export async function sbPatchOrder(id, fields) {
 
 // Чернетка в MyDrop (submitted: false — постачальник її ще не бачить, власник подає вручну).
 // Місто і відділення в замовленні зберігаються одним рядком "Місто, відділення НП №N".
+// Єдина варіація товару без розмірів (MyDrop вимагає її при подачі; зазвичай назва «-»).
+async function singleSizeTitle(productId) {
+  const [vendorId, itemId] = String(productId).split('-');
+  const sizes = (await getVendorPrices(vendorId).catch(() => null))?.get(itemId)?.sizes || [];
+  return sizes.length === 1 ? sizes[0].title : undefined;
+}
+
 export async function createMydropDraft(order) {
   const m = /^(.*), відділення НП №(\d+)$/.exec(order.city || '');
   const city = m ? m[1] : order.city;
@@ -120,11 +127,9 @@ export async function createMydropDraft(order) {
   const product = [...PRODUCTS.values()].find((p) => p.sku === order.sku && p.title === order.product_name);
   // MyDrop при подачі вимагає варіацію навіть у товару без розмірів (там одна варіація з назвою «-»).
   let defaultSize;
-  if (product && !order.size) {
-    const [vendorId, itemId] = product.id.split('-');
-    const sizes = (await getVendorPrices(vendorId).catch(() => null))?.get(itemId)?.sizes || [];
-    if (sizes.length === 1) defaultSize = sizes[0].title;
-  }
+  if (product && !order.size) defaultSize = await singleSizeTitle(product.id);
+  const cartItems = Array.isArray(order.items) && order.items.length ? order.items : null;
+  if (cartItems) for (const i of cartItems) if (!i.size) i.defaultSize = await singleSizeTitle(i.id);
 
   const res = await fetch('https://backend.mydrop.com.ua/dropshipper/api/orders', {
     method: 'POST',
@@ -141,8 +146,8 @@ export async function createMydropDraft(order) {
             product_title: i.title,
             sku: i.sku,
             price: i.price,
-            amount: 1,
-            ...(i.size ? { size_title: i.size } : {}),
+            amount: i.qty || 1,
+            ...(i.size || i.defaultSize ? { size_title: i.size || i.defaultSize } : {}),
           }))
         : [
             {
@@ -168,8 +173,16 @@ export async function createMydropDraft(order) {
     }),
   });
   const json = await res.json().catch(() => ({}));
-  if (res.ok) return { id: json.id ?? null, error: null, vendor: product?.vendor };
+  if (res.ok) return { id: json.id ?? null, error: null, vendor: product?.vendor || cartItems?.[0]?.vendor };
   return { id: null, error: json.message || json.reason || `mydrop_http_${res.status}` };
+}
+
+// Мінімальна сума замовлення (за ціною продажу) на одного постачальника. За замовчуванням 200 ₴.
+// MIN_ORDER_AMOUNT — для всіх; MIN_ORDER_BY_VENDOR='BEZET=500,Oasis_Drop=300' — перевизначення по постачальнику; 0 вимикає.
+export function minOrderFor(vendor) {
+  const by = new Map((process.env.MIN_ORDER_BY_VENDOR || '').split(',').map((x) => x.split('=').map((t) => t.trim())).filter((p) => p[0] && p[1]));
+  const v = by.has(vendor) ? by.get(vendor) : process.env.MIN_ORDER_AMOUNT ?? 200;
+  return Math.max(0, Number(v) || 0);
 }
 
 // Постачальники, яким накладений платіж подаємо автоматично (перевірено dry_run: без передоплати й скриншота).

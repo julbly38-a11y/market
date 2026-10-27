@@ -12,7 +12,7 @@ const submitFailure = (error) => {
 
 const itemsHtml = (order) =>
   Array.isArray(order.items) && order.items.length
-    ? `<p><b>${esc(order.product_name)}</b> = <b>${esc(order.total)} ₴</b></p><ul>${order.items.map((i) => `<li>${esc(i.label)}: ${esc(i.title)}${i.size ? `, розмір ${esc(i.size)}` : ''} (арт. ${esc(i.sku)}) — ${esc(i.price)} ₴</li>`).join('')}</ul>`
+    ? `<p><b>${esc(order.product_name)}</b> = <b>${esc(order.total)} ₴</b></p><ul>${order.items.map((i) => `<li>${i.label ? `${esc(i.label)}: ` : ''}${esc(i.title)}${i.size ? `, розмір ${esc(i.size)}` : ''} (арт. ${esc(i.sku)})${i.qty > 1 ? ` × ${esc(i.qty)}` : ''} — ${esc(i.price)} ₴</li>`).join('')}</ul>`
     : `<p>${esc(order.product_name)} (арт. ${esc(order.sku)})${order.size ? `, розмір ${esc(order.size)}` : ''} × ${esc(order.qty)} = <b>${esc(order.total)} ₴</b></p>`;
 
 // Скільки переказати постачальнику (сума закупівлі, drop_price) і нагадування про фото оплати.

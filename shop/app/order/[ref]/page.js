@@ -59,7 +59,7 @@ export default async function Page({ params }) {
       {Array.isArray(order.items) && order.items.length ? (
         <>
           <p><b>{order.product_name}</b> — <b>{order.total} ₴</b></p>
-          <ul>{order.items.map((i) => <li key={i.id}>{i.label}: {i.title}{i.size ? `, розмір ${i.size}` : ''}</li>)}</ul>
+          <ul>{order.items.map((i, n) => <li key={`${i.id}-${n}`}>{i.label ? `${i.label}: ` : ''}{i.title}{i.size ? `, розмір ${i.size}` : ''}{i.qty > 1 ? ` × ${i.qty}` : ''}</li>)}</ul>
         </>
       ) : (
         <p>{order.product_name}{order.size ? `, розмір ${order.size}` : ''} × {order.qty} — <b>{order.total} ₴</b></p>

@@ -9,10 +9,10 @@ import { getBranches } from '../../../lib/np';
 import { notifyCodOrder } from '../../../lib/notify';
 import { getProductDetails } from '../../../lib/details';
 import { SET_SLOTS, getSetRow, salePrice } from '../../../lib/sets';
-import { PRODUCTS, SITE, autoSubmitVendors, createMydropDraft, submitMydropOrder, generateTtnVendors, getLiveSupplierPrice, orderUrl, sb, sbInsertOrder, sbPatchOrder } from '../../../lib/orders';
+import { PRODUCTS, SITE, autoSubmitVendors, createMydropDraft, minOrderFor, submitMydropOrder, generateTtnVendors, getLiveSupplierPrice, orderUrl, sb, sbInsertOrder, sbPatchOrder } from '../../../lib/orders';
 
 const bad = (error, status = 400) => Response.json({ ok: false, error }, { status });
-const fail = (error, status) => ({ error: Response.json({ ok: false, error }, { status: status || 400 }) });
+const fail = (error, status, extra = {}) => ({ error: Response.json({ ok: false, error, ...extra }, { status: status || 400 }) });
 
 // Один товар: перевіряє наявність, розмір, кількість. Повертає поля замовлення й позиції для рахунку.
 async function buildSingle(b) {
@@ -39,6 +39,8 @@ async function buildSingle(b) {
     if (!z || z.stock < qty) return fail('bad_size');
   }
   const total = price * qty;
+  const min = minOrderFor(catalogItem.vendor);
+  if (total < min) return fail('min_order', 400, { min, total, vendor: catalogItem.vendor });
   return {
     total,
     record: {
@@ -46,6 +48,63 @@ async function buildSingle(b) {
       unit_price: price, supplier_price: live.drop, qty, size: size || null,
     },
     basket: [{ name: catalogItem.title, qty, sum: price * 100, code: String(catalogItem.sku) }],
+  };
+}
+
+// Кошик: кілька позицій ОДНОГО постачальника в одне замовлення (одна посилка, одна ТТН).
+// Ціни й залишки беремо з живих даних MyDrop, браузеру не довіряємо.
+async function buildCart(b) {
+  const list = b.cartItems;
+  if (!Array.isArray(list) || !list.length || list.length > 20) return fail('bad_cart');
+  const merged = new Map(); // однакові товар+розмір зливаємо в одну позицію
+  for (const x of list) {
+    const id = String(x?.productId || '');
+    const size = String(x?.size || '').trim();
+    const qty = Number(x?.qty);
+    if (!Number.isInteger(qty) || qty < 1 || qty > 99) return fail('bad_qty');
+    const k = `${id}|${size}`;
+    merged.set(k, { id, size, qty: (merged.get(k)?.qty || 0) + qty });
+  }
+  const items = [];
+  let vendor = null;
+  let supplier = 0;
+  for (const { id, size, qty } of merged.values()) {
+    const p = PRODUCTS.get(id);
+    if (!p) return fail('unknown_product');
+    if (vendor && p.vendor !== vendor) return fail('mixed_vendors');
+    vendor = p.vendor;
+    let live;
+    try {
+      live = await getLiveSupplierPrice(id);
+    } catch (err) {
+      console.error('supplier price failed', err);
+      return fail('price_unavailable', 502);
+    }
+    if (!live || !live.price) return fail('price_unavailable', 502);
+    const price = sellPrice(live.price, live.drop);
+    if (price == null) return fail('no_cost');
+    const details = await getProductDetails(id, { fresh: true });
+    const sizes = details?.sizes || [];
+    if (sizes.length) {
+      const z = sizes.find((x) => x.title === size);
+      if (!z || z.stock < qty) return fail('bad_size');
+    } else if (qty > Math.max(live.stock, 1)) {
+      return fail('bad_qty');
+    }
+    items.push({ slot: `i${items.length + 1}`, label: '', id, title: p.title, sku: p.sku, vendor: p.vendor, size: size || null, qty, price, supplier_price: live.drop });
+    supplier += live.drop * qty;
+  }
+  const total = items.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const min = minOrderFor(vendor);
+  if (total < min) return fail('min_order', 400, { min, total, vendor });
+  return {
+    total,
+    record: {
+      category: 'Кошик', sku: 'CART',
+      product_name: items.length === 1 ? items[0].title : `Кошик ${vendor}: ${items.length} поз.`,
+      unit_price: total, supplier_price: supplier, qty: 1, size: null, items,
+    },
+    basket: items.map((i) => ({ name: `${i.title}${i.size ? ` (${i.size})` : ''}`.slice(0, 120), qty: i.qty, sum: i.price * 100, code: String(i.sku) })),
   };
 }
 
@@ -112,7 +171,7 @@ export async function POST(req) {
   const emailRaw = String(b.email || '').trim().slice(0, 120);
   const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw) ? emailRaw : null;
 
-  const built = b.setSlug ? await buildSet(b) : await buildSingle(b);
+  const built = b.setSlug ? await buildSet(b) : Array.isArray(b.cartItems) ? await buildCart(b) : await buildSingle(b);
   if (built.error) return built.error;
   const { total, record, basket } = built;
 
@@ -162,7 +221,7 @@ export async function POST(req) {
   if (cod) {
     const md = await createMydropDraft(order).catch((err) => ({ id: null, error: String(err) }));
     // Автоподача постачальнику з перевіреним сценарієм накладеного платежу; решту подає власник вручну.
-    if (md.id && !Array.isArray(order.items) && autoSubmitVendors().includes(md.vendor)) {
+    if (md.id && !order.set_id && autoSubmitVendors().includes(md.vendor)) {
       const sub = await submitMydropOrder(md.id, generateTtnVendors().includes(md.vendor) ? { generate_ttn: true } : {}).catch((err) => ({ submitted: false, error: `submit: ${err}` }));
       md.submitted = sub.submitted;
       if (sub.error) md.error = sub.error;

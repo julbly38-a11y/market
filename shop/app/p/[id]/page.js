@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import data from '../../../data/products.json';
 import { groupOf, typeOf } from '../../../lib/groups';
 import ProductBuy from './ProductBuy';
+import { minOrderFor } from '../../../lib/orders';
 import Gallery from './Gallery';
 import ReviewBox from './ReviewBox';
 import { getApprovedReviews, getProductDetails } from '../../../lib/details';
@@ -89,7 +90,7 @@ export default async function Page({ params }) {
 
           <div className="p-card">
             <h2>Оформити замовлення</h2>
-            <ProductBuy product={{ id: p.id, title: p.title, price: p.price, stock: p.stock, vendor: p.vendor, sizes }} />
+            <ProductBuy product={{ id: p.id, title: p.title, price: p.price, stock: p.stock, vendor: p.vendor, sizes, minOrder: minOrderFor(p.vendor) }} />
           </div>
         </div>
       </div>

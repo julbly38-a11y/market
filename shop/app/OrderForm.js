@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { addToCart } from './cartStore';
 
 export const money = new Intl.NumberFormat('uk-UA');
 
@@ -18,14 +19,17 @@ const ERR = {
   too_many: 'Забагато замовлень з цього номера, спробуйте пізніше',
   unknown_product: 'Товар не знайдено',
   price_unavailable: 'Не вдалося уточнити ціну в постачальника, спробуйте ще раз за хвилину',
+  bad_cart: 'Кошик порожній або містить забагато позицій',
+  mixed_vendors: 'У кошику товари різних постачальників: оформлюйте їх окремо',
   not_saved: 'Не вдалося зберегти замовлення, спробуйте ще раз',
   payment_unavailable: 'Оплата тимчасово недоступна, спробуйте пізніше',
 };
 
 // Форма замовлення: у модальному вікні (швидке замовлення з каталогу) або вбудована на сторінці товару.
-export function OrderForm({ product, inline = false, onClose, extra = null, blocked = '' }) {
+export function OrderForm({ product, inline = false, onClose, onDone, extra = null, blocked = '' }) {
   const [f, setF] = useState({ name: '', phone: '+380', email: '', payment: 'card', city: '', warehouse: '', warehouseText: '', size: '', qty: 1, note: '', website: '' });
   const [state, setState] = useState({ busy: false, error: '' });
+  const [added, setAdded] = useState(false);
   const [cities, setCities] = useState([]); // підказки міст
   const [cityRef, setCityRef] = useState('');
   const [branches, setBranches] = useState([]);
@@ -88,7 +92,9 @@ export function OrderForm({ product, inline = false, onClose, extra = null, bloc
         body: JSON.stringify({ ...f, city: city.name, cityRef, qty: extra ? 1 : Number(f.qty), productId: product.id, ...(extra || {}) }),
       });
       const json = await res.json();
+      if (json.error === 'min_order') throw new Error(`Мінімальна сума замовлення в «${json.vendor}»: ${money.format(json.min)} ₴ (у вас ${money.format(json.total)} ₴). Додайте ще товарів у кошик.`);
       if (!json.ok || !(json.paymentUrl || json.orderUrl)) throw new Error(ERR[json.error] || 'Помилка, спробуйте ще раз');
+      if (onDone) onDone();
       window.location.href = json.paymentUrl || json.orderUrl; // картка: сторінка mono pay; накладений платіж: сторінка статусу
       setState({ busy: true, error: '' });
     } catch (err) {
@@ -108,6 +114,9 @@ export function OrderForm({ product, inline = false, onClose, extra = null, bloc
         <span>До сплати</span>
         <b>{money.format(product.price * f.qty)} ₴</b>
       </div>
+      {product.minOrder > 0 && !extra && product.price * f.qty < product.minOrder && (
+        <p className="fine">Мінімальна сума замовлення {money.format(product.minOrder)} ₴: покладіть товар у кошик і додайте ще, або збільште кількість.</p>
+      )}
       <div className="field">
         <label htmlFor={`n-${product.id}`}>ПІБ отримувача</label>
         <input id={`n-${product.id}`} required autoComplete="name" placeholder="Прізвище Імʼя" value={f.name} onChange={set('name')} />
@@ -176,6 +185,22 @@ export function OrderForm({ product, inline = false, onClose, extra = null, bloc
       <input className="hp" tabIndex="-1" autoComplete="off" name="website" value={f.website} onChange={set('website')} aria-hidden="true" />
       <p className="fine">Натискаючи кнопку, ви погоджуєтесь з <a href="/oferta" target="_blank">офертою</a> і <a href="/konfidentsiynist" target="_blank">політикою конфіденційності</a>. Після покупки ми можемо надіслати SMS або лист із проханням про відгук.</p>
       {state.error && <p className="err" role="alert">{state.error}</p>}
+      {inline && !extra && (
+        <button
+          type="button"
+          className="ghost wide-ghost"
+          disabled={product.stock < 1}
+          onClick={() => {
+            if (sizes.length && !f.size) return setState({ busy: false, error: ERR.bad_size });
+            addToCart({ id: product.id, size: f.size, qty: Number(f.qty) });
+            setAdded(true);
+            setState({ busy: false, error: '' });
+          }}
+        >
+          У кошик
+        </button>
+      )}
+      {added && <p className="fine">Додано в кошик. <a href="/cart">Перейти до кошика →</a></p>}
       {inline ? (
         <button className="buy wide" disabled={state.busy || product.stock < 1}>
           {state.busy ? (f.payment === 'cod' ? 'Оформлюємо…' : 'Переходимо до оплати…') : (f.payment === 'cod' ? 'Оформити замовлення' : 'Оплатити карткою')}

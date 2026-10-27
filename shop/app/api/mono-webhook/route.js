@@ -41,7 +41,7 @@ export async function POST(req) {
     const paidOrder = { ...order, payment_status: 'paid' }; // order прочитано до оплати
     const md = await createMydropDraft(paidOrder).catch((err) => ({ id: null, error: String(err) }));
     // Оплачено карткою: подаємо постачальнику з передоплатою з балансу MyDrop (покупець уже заплатив нам повну суму).
-    if (md.id && !Array.isArray(order.items) && prepayBalanceVendors().includes(md.vendor)) {
+    if (md.id && !order.set_id && prepayBalanceVendors().includes(md.vendor)) {
       const sub = await submitMydropOrder(md.id, { prepay_amount: Number(order.total), prepay_from_balance: true, ...(generateTtnVendors().includes(md.vendor) ? { generate_ttn: true } : {}) })
         .catch((err) => ({ submitted: false, error: `submit: ${err}` }));
       md.submitted = sub.submitted;
