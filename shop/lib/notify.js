@@ -2,7 +2,13 @@
 // Потрібні RESEND_API_KEY і NOTIFY_EMAIL; без них нічого не робить. Помилка сповіщення не ламає вебхук.
 // NOTIFY_FROM — відправник (за замовчуванням тестовий onboarding@resend.dev; для свого домену треба верифікація в Resend).
 
-import { orderUrl } from './orders';
+import { orderUrl, submitErrorHint } from './orders';
+
+// Причина невдалої автоподачі для листа власнику: код помилки й що з цим робити.
+const submitFailure = (error) => {
+  const hint = submitErrorHint(error);
+  return `⚠️ автоподача не вдалась: ${error}${hint ? ` (${hint})` : ''}`;
+};
 
 const itemsHtml = (order) =>
   Array.isArray(order.items) && order.items.length
@@ -39,7 +45,7 @@ export async function sendMail(subject, html) {
 
 export async function notifyPaidOrder(order, mydrop) {
   const draft = mydrop?.id
-    ? `${mydrop.submitted ? 'замовлення MyDrop' : 'чернетка MyDrop'} №${mydrop.id}${!mydrop.submitted && mydrop.error ? `, ⚠️ автоподача не вдалась: ${mydrop.error}` : ''}`
+    ? `${mydrop.submitted ? 'замовлення MyDrop' : 'чернетка MyDrop'} №${mydrop.id}${!mydrop.submitted && mydrop.error ? `, ${submitFailure(mydrop.error)}` : ''}`
     : `⚠️ чернетку MyDrop не створено: ${mydrop?.error || 'невідомо'}`;
   const next = mydrop?.submitted
     ? 'Замовлення подано постачальнику автоматично, оплата списана з балансу MyDrop. ТТН створить постачальник.'
@@ -74,7 +80,7 @@ export async function sendCustomerMail(to, subject, html) {
 
 export async function notifyCodOrder(order, mydrop) {
   const draft = mydrop?.id
-    ? `${mydrop.submitted ? 'замовлення MyDrop' : 'чернетка MyDrop'} №${mydrop.id}${!mydrop.submitted && mydrop.error ? `, ⚠️ автоподача не вдалась: ${mydrop.error}` : ''}`
+    ? `${mydrop.submitted ? 'замовлення MyDrop' : 'чернетка MyDrop'} №${mydrop.id}${!mydrop.submitted && mydrop.error ? `, ${submitFailure(mydrop.error)}` : ''}`
     : `⚠️ чернетку MyDrop не створено: ${mydrop?.error || 'невідомо'}`;
   const action = mydrop?.submitted
     ? `<b>Не оплачено.</b> Замовлення вже <b>подано постачальнику автоматично</b> (накладений платіж <b>${esc(order.total)} ₴</b>). Зателефонуйте покупцеві; якщо він не підтвердить, скасуйте замовлення в MyDrop до відправки.`

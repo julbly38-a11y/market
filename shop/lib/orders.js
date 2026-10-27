@@ -13,8 +13,7 @@ export const PRODUCTS = new Map(data.products.map((p) => [p.id, p]));
 // процесу лише {id: {price, stock}} на 5 хвилин. Одночасні запити ділять один завантажений каталог.
 // id товару має вигляд "<id постачальника>-<id товару>". Без націнки: ціна = ціна постачальника.
 const MYDROP_BASE = 'https://backend.mydrop.com.ua/dropshipper/api';
-const PRICE_TTL_MS = 5 * 60 * 1000;
-const vendorPrices = new Map(); // vendorId -> { at, promise }
+const PRICE_TTL_MS = 5 * 60 * 1000;const vendorPrices = new Map(); // vendorId -> { at, promise }
 
 function loadVendorPrices(vendorId) {
   const promise = (async () => {
@@ -176,7 +175,7 @@ export async function createMydropDraft(order) {
 // Постачальники, яким накладений платіж подаємо автоматично (перевірено dry_run: без передоплати й скриншота).
 // AUTO_SUBMIT_VENDORS — назви через кому; порожнє значення вимикає автоподачу.
 export const autoSubmitVendors = () =>
-  (process.env.AUTO_SUBMIT_VENDORS ?? 'Oasis_Drop,Товарний Синдикат,Secret Shop').split(',').map((v) => v.trim()).filter(Boolean);
+  (process.env.AUTO_SUBMIT_VENDORS ?? 'Oasis_Drop,Товарний Синдикат,Secret Shop,BEZET').split(',').map((v) => v.trim()).filter(Boolean);
 
 // Подає чернетку постачальнику (після цього він сам створює ТТН). Повертає { submitted, ttn, error }.
 // Постачальники, яким оплачені карткою замовлення подаємо з передоплатою з балансу MyDrop.
@@ -184,16 +183,69 @@ export const autoSubmitVendors = () =>
 export const prepayBalanceVendors = () =>
   (process.env.PREPAY_BALANCE_VENDORS ?? 'Oasis_Drop,Товарний Синдикат,Secret Shop').split(',').map((v) => v.trim()).filter(Boolean);
 
+// Що робити власнику при відмові подачі (коди помилок MyDrop). Йде в лист у notify.js.
+const SUBMIT_ERROR_HINTS = {
+  product_out_of_stock: 'товару вже немає в постачальника: скасуйте чернетку й повідомте покупця',
+  price_less_than_rrp: 'ціна продажу нижча за РРЦ постачальника: перевірте ціну в чернетці й подайте вручну',
+  delivery_service_not_allowed: 'постачальник не відправляє цією службою доставки: змініть службу в чернетці або скасуйте',
+  description_required: 'постачальник вимагає примітку: додайте її в чернетці й подайте вручну',
+  payment_image_required: 'потрібен скриншот оплати: прикріпіть його в чернетці й подайте вручну',
+  not_enough_balance: 'на балансі MyDrop недостатньо коштів: постачальник має поповнити баланс, потім подайте вручну',
+  subscription_required: 'тариф або безкоштовні замовлення MyDrop закінчились',
+};
+
+export function submitErrorHint(error) {
+  const hints = Object.entries(SUBMIT_ERROR_HINTS).filter(([code]) => String(error || '').includes(code)).map(([, hint]) => hint);
+  return hints.join('; ');
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Стан замовлення в MyDrop: після збою мережі перевіряємо, чи попередня подача все ж пройшла, щоб не подати вдруге.
+async function mydropOrderState(mydropId) {
+  const res = await fetch(`${MYDROP_BASE}/orders/${mydropId}`, { headers: { 'X-API-KEY': process.env.MYDROP_API_KEY }, cache: 'no-store' }).catch(() => null);
+  const m = res?.ok ? await res.json().catch(() => null) : null;
+  return m ? { submitted: !!m.submitted, ttn: m.ttn ? String(m.ttn) : null } : null;
+}
+
+// Збої мережі й відповіді 429/5xx повторюємо (до 3 спроб); відмови з кодом помилки — ні, крім description_required
+// (тоді одразу пробуємо ще раз із приміткою).
 export async function submitMydropOrder(mydropId, fields = {}) {
-  const res = await fetch(`https://backend.mydrop.com.ua/dropshipper/api/orders/${mydropId}/submit`, {
-    method: 'POST',
-    headers: { 'X-API-KEY': process.env.MYDROP_API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify(fields),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (res.ok && json.submitted) return { submitted: true, ttn: json.order?.ttn || null, error: null };
-  const err = (json.errors || []).map((e) => e.code).join(', ') || json.code || json.message || `mydrop_http_${res.status}`;
-  return { submitted: false, ttn: null, error: `submit: ${err}` };
+  let last = { submitted: false, ttn: null, error: 'submit: unknown' };
+  let withNote = false; // повтор із приміткою йде одразу: перша спроба точно відхилена
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const immediate = withNote;
+    withNote = false;
+    if (attempt && !immediate) {
+      await sleep(1000 * attempt);
+      const state = await mydropOrderState(mydropId);
+      if (state?.submitted) return { submitted: true, ttn: state.ttn, error: null };
+    }
+    let res;
+    let json = {};
+    try {
+      res = await fetch(`${MYDROP_BASE}/orders/${mydropId}/submit`, {
+        method: 'POST',
+        headers: { 'X-API-KEY': process.env.MYDROP_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      });
+      json = await res.json().catch(() => ({}));
+    } catch (err) {
+      last = { submitted: false, ttn: null, error: `submit: network_error (${err.message})` };
+      continue;
+    }
+    if (res.ok && json.submitted) return { submitted: true, ttn: json.order?.ttn || null, error: null };
+    const codes = (json.errors || []).map((e) => e.code);
+    const err = codes.join(', ') || json.code || json.message || `mydrop_http_${res.status}`;
+    last = { submitted: false, ttn: null, error: `submit: ${err}` };
+    if (codes.includes('description_required') && !fields.description) {
+      fields = { ...fields, description: 'Замовлення з сайту forpost-shop.com' };
+      withNote = true;
+      continue;
+    }
+    if (codes.length || json.code || !(res.status === 429 || res.status >= 500)) break;
+  }
+  return last;
 }
 
 // Посилання на статус замовлення: /order/<id>-<токен>. Токен — HMAC від id, тож чужі замовлення не перебрати.
