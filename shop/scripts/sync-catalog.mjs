@@ -2,6 +2,7 @@
 // Запуск: npm run sync   (ключ береться з ../.env, на сайт він не потрапляє)
 
 import { writeFileSync } from 'node:fs';
+import { inAssortment } from '../lib/assortment.mjs';
 
 const BASE = 'https://backend.mydrop.com.ua/dropshipper/api';
 const KEY = process.env.MYDROP_API_KEY;
@@ -27,6 +28,7 @@ for (const dv of vendorsJson.results) {
   let kept = 0;
   for (const p of json.products) {
     if (!p.price || !p.images?.length) continue;
+    if (!inAssortment(name, cats.get(p.category_id))) continue; // лише військова тема й енергетика
     const stock = (p.sizes || []).reduce((s, z) => s + (z.real_count_dropshipper || 0), 0);
     products.push({
       id: `${dv.id}-${p.id}`,
