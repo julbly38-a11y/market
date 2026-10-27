@@ -183,6 +183,13 @@ export const autoSubmitVendors = () =>
 export const prepayBalanceVendors = () =>
   (process.env.PREPAY_BALANCE_VENDORS ?? 'Oasis_Drop,Товарний Синдикат,Secret Shop').split(',').map((v) => v.trim()).filter(Boolean);
 
+// Постачальники, де просимо MyDrop створити ТТН при подачі (`generate_ttn: true`, модуль «Генерація ТТН»).
+// Працює лише якщо постачальник дозволив дропшиперу генерувати свою ТТН і в MyDrop додано контрагента Нової Пошти.
+// GENERATE_TTN_VENDORS — назви через кому; за замовчуванням порожньо (вимкнено). Без дозволу подача йде без generate_ttn.
+// Увага: з власною ТТН накладений платіж надходить на контрагента власника, а не постачальнику.
+export const generateTtnVendors = () =>
+  (process.env.GENERATE_TTN_VENDORS ?? '').split(',').map((v) => v.trim()).filter(Boolean);
+
 // Що робити власнику при відмові подачі (коди помилок MyDrop). Йде в лист у notify.js.
 const SUBMIT_ERROR_HINTS = {
   product_out_of_stock: 'товару вже немає в постачальника: скасуйте чернетку й повідомте покупця',
@@ -192,6 +199,8 @@ const SUBMIT_ERROR_HINTS = {
   payment_image_required: 'потрібен скриншот оплати: прикріпіть його в чернетці й подайте вручну',
   not_enough_balance: 'на балансі MyDrop недостатньо коштів: постачальник має поповнити баланс, потім подайте вручну',
   subscription_required: 'тариф або безкоштовні замовлення MyDrop закінчились',
+  external_ttn_not_allowed: 'постачальник не дозволив генерувати свою ТТН: подано без неї, ТТН створить постачальник',
+  ttn_generation_failed: 'Нова Пошта не створила ТТН: перевірте контрагента й відділення в налаштуваннях MyDrop',
 };
 
 export function submitErrorHint(error) {
@@ -238,6 +247,14 @@ export async function submitMydropOrder(mydropId, fields = {}) {
     const codes = (json.errors || []).map((e) => e.code);
     const err = codes.join(', ') || json.code || json.message || `mydrop_http_${res.status}`;
     last = { submitted: false, ttn: null, error: `submit: ${err}` };
+    // Постачальник не дозволив власну ТТН або НП відмовила: подаємо без generate_ttn, ТТН створить постачальник.
+    if (fields.generate_ttn && (codes.includes('external_ttn_not_allowed') || codes.includes('ttn_generation_failed'))) {
+      const { generate_ttn, ...rest } = fields;
+      fields = rest;
+      last.ttnFallback = err;
+      withNote = true; // повтор одразу: перша спроба точно відхилена
+      continue;
+    }
     if (codes.includes('description_required') && !fields.description) {
       fields = { ...fields, description: 'Замовлення з сайту forpost-shop.com' };
       withNote = true;

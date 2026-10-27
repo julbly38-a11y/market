@@ -9,7 +9,7 @@ import { getBranches } from '../../../lib/np';
 import { notifyCodOrder } from '../../../lib/notify';
 import { getProductDetails } from '../../../lib/details';
 import { SET_SLOTS, getSetRow, salePrice } from '../../../lib/sets';
-import { PRODUCTS, SITE, autoSubmitVendors, createMydropDraft, submitMydropOrder, getLiveSupplierPrice, orderUrl, sb, sbInsertOrder, sbPatchOrder } from '../../../lib/orders';
+import { PRODUCTS, SITE, autoSubmitVendors, createMydropDraft, submitMydropOrder, generateTtnVendors, getLiveSupplierPrice, orderUrl, sb, sbInsertOrder, sbPatchOrder } from '../../../lib/orders';
 
 const bad = (error, status = 400) => Response.json({ ok: false, error }, { status });
 const fail = (error, status) => ({ error: Response.json({ ok: false, error }, { status: status || 400 }) });
@@ -163,7 +163,7 @@ export async function POST(req) {
     const md = await createMydropDraft(order).catch((err) => ({ id: null, error: String(err) }));
     // Автоподача постачальнику з перевіреним сценарієм накладеного платежу; решту подає власник вручну.
     if (md.id && !Array.isArray(order.items) && autoSubmitVendors().includes(md.vendor)) {
-      const sub = await submitMydropOrder(md.id).catch((err) => ({ submitted: false, error: `submit: ${err}` }));
+      const sub = await submitMydropOrder(md.id, generateTtnVendors().includes(md.vendor) ? { generate_ttn: true } : {}).catch((err) => ({ submitted: false, error: `submit: ${err}` }));
       md.submitted = sub.submitted;
       if (sub.error) md.error = sub.error;
       if (sub.ttn) md.ttn = sub.ttn;
