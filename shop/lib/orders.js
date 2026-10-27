@@ -119,6 +119,13 @@ export async function createMydropDraft(order) {
   const city = m ? m[1] : order.city;
   const warehouse = m ? m[2] : undefined;
   const product = [...PRODUCTS.values()].find((p) => p.sku === order.sku && p.title === order.product_name);
+  // MyDrop при подачі вимагає варіацію навіть у товару без розмірів (там одна варіація з назвою «-»).
+  let defaultSize;
+  if (product && !order.size) {
+    const [vendorId, itemId] = product.id.split('-');
+    const sizes = (await getVendorPrices(vendorId).catch(() => null))?.get(itemId)?.sizes || [];
+    if (sizes.length === 1) defaultSize = sizes[0].title;
+  }
 
   const res = await fetch('https://backend.mydrop.com.ua/dropshipper/api/orders', {
     method: 'POST',
@@ -145,7 +152,7 @@ export async function createMydropDraft(order) {
               sku: order.sku,
               price: order.unit_price,
               amount: order.qty,
-              ...(order.size ? { size_title: order.size } : {}),
+              ...(order.size || defaultSize ? { size_title: order.size || defaultSize } : {}),
             },
           ],
       order_source: 'Форпост (сайт)',
